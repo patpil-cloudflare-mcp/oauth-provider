@@ -229,8 +229,8 @@ export function renderPublicHomePage(): string {
         <img src="/wtyczkiai_logo_panel.png" alt="wtyczki.ai" />
       </div>
 
-      <h1>Witaj w wtyczki.ai</h1>
-      <p class="subtitle">Zaloguj się, aby zarządzać swoimi aplikacjami MCP i kluczami API</p>
+      <h1>Zarejestruj się w wtyczki.ai</h1>
+      <p class="subtitle">Utwórz konto, aby zarządzać swoimi aplikacjami MCP i kluczami API</p>
 
       <div id="errorMessage" class="error-message"></div>
 
@@ -252,15 +252,15 @@ export function renderPublicHomePage(): string {
         </div>
 
         <button type="submit" id="submitButton" class="submit-button">
-          Wyślij kod weryfikacyjny
+          Zarejestruj się
         </button>
       </form>
 
       <div class="divider"><span>lub</span></div>
 
       <div class="info-box">
-        <p>Masz już aktywną sesję?</p>
-        <a href="/dashboard" class="dashboard-link">Przejdź do panelu →</a>
+        <p>Masz już konto?</p>
+        <a href="/dashboard" class="dashboard-link">Zaloguj się →</a>
       </div>
     </div>
 
@@ -307,7 +307,7 @@ export function renderPublicHomePage(): string {
 
       // Disable button and show loading state
       submitButton.disabled = true;
-      submitButton.textContent = 'Wysyłanie...';
+      submitButton.textContent = 'Rejestracja...';
       errorMessage.classList.remove('visible');
 
       try {
@@ -316,7 +316,7 @@ export function renderPublicHomePage(): string {
       } catch (error) {
         showError('Wystąpił błąd. Spróbuj ponownie.');
         submitButton.disabled = false;
-        submitButton.textContent = 'Wyślij kod weryfikacyjny';
+        submitButton.textContent = 'Zarejestruj się';
       }
     }
 
@@ -331,7 +331,7 @@ export function renderPublicHomePage(): string {
       if (event.persisted) {
         const submitButton = document.getElementById('submitButton');
         submitButton.disabled = false;
-        submitButton.textContent = 'Wyślij kod weryfikacyjny';
+        submitButton.textContent = 'Zarejestruj się';
       }
     });
   </script>
