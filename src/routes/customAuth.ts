@@ -114,7 +114,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       console.log(`✅ [custom-auth] Existing user logging in: ${existingUser.user_id}`);
     }
 
-    // User exists - send Magic Auth code via WorkOS
+    // Send Magic Auth code via WorkOS (both new and existing users)
     const workos = new WorkOS(env.WORKOS_API_KEY);
 
     console.log(`🔄 [custom-auth] Sending Magic Auth code to: ${email}`);
