@@ -153,11 +153,12 @@ export default {
     // WorkOS Login endpoint - Redirect to custom Magic Auth login
     if (url.pathname === '/auth/login' && request.method === 'GET') {
       console.log('🔐 Redirecting to custom Magic Auth login');
-      // Preserve return_to query parameter
+      // Preserve return_to query parameter (Response.redirect requires absolute URL)
       const returnTo = url.searchParams.get('return_to');
+      const baseUrl = url.origin;
       const redirectUrl = returnTo
-        ? `/auth/login-custom?return_to=${encodeURIComponent(returnTo)}`
-        : '/auth/login-custom';
+        ? `${baseUrl}/auth/login-custom?return_to=${encodeURIComponent(returnTo)}`
+        : `${baseUrl}/auth/login-custom`;
       return Response.redirect(redirectUrl, 302);
     }
 
