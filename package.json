@@ -1,4 +1,18 @@
 {
+  "name": "mcp-oauth",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:registration": "vitest run pre_testing/user-registration",
+    "test:deletion": "vitest run pre_testing/account-deletion",
+    "test:api-keys": "vitest run pre_testing/api-keys",
+    "test:oauth": "vitest run pre_testing/oauth",
+    "test:database": "vitest run pre_testing/database",
+    "test:verbose": "vitest run --reporter=verbose"
+  },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.20.0",
@@ -8,7 +22,9 @@
     "wrangler": "^4.45.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251217.0",
     "@vitest/ui": "^4.0.14",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.14"
   }
 }
