@@ -87,29 +87,32 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
     console.log(`🔐 [custom-auth] Email submitted: ${email}`);
 
     // Check if user exists in D1 database
-    const existingUser = await env.DB.prepare(`
+    let existingUser = await env.DB.prepare(`
       SELECT user_id, email FROM users WHERE email = ?
     `).bind(email).first();
 
+    // REGISTRATION FLOW: If user doesn't exist, create new account in D1
+    // This gives them access to MCP servers
     if (!existingUser) {
-      console.log(`❌ [custom-auth] User not found: ${email}`);
+      console.log(`🆕 [custom-auth] New user registration: ${email}`);
 
-      // User doesn't exist - show clear error message
-      const newCsrf = crypto.randomUUID();
-      return new Response(renderLoginEmailForm(
-        'Nie znaleziono konta dla tego adresu e-mail. Sprawdź poprawność adresu lub skontaktuj się z obsługą.',
-        returnTo,
-        newCsrf
-      ), {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
-        }
-      });
+      // Create new user in Cloudflare D1 database
+      const userId = crypto.randomUUID();
+      const timestamp = new Date().toISOString();
+
+      await env.DB.prepare(`
+        INSERT INTO users (user_id, email, created_at, last_login_at)
+        VALUES (?, ?, ?, ?)
+      `).bind(userId, email, timestamp, timestamp).run();
+
+      console.log(`✅ [custom-auth] New user created in D1: ${userId}`);
+      console.log(`   Email: ${email}`);
+      console.log(`   User now has access to MCP servers`);
+
+      existingUser = { user_id: userId, email };
+    } else {
+      console.log(`✅ [custom-auth] Existing user logging in: ${existingUser.user_id}`);
     }
-
-    console.log(`✅ [custom-auth] User found: ${existingUser.user_id}`);
 
     // User exists - send Magic Auth code via WorkOS
     const workos = new WorkOS(env.WORKOS_API_KEY);
