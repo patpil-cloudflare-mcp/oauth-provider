@@ -33,8 +33,8 @@ custom_domain = true
 
 [[d1_databases]]
 binding = "DB"
-database_name = "mcp-tokens-database"
-database_id = "ebb389aa-2d65-4d38-a0da-50c7da9dfe8b"
+database_name = "mcp-oauth"
+database_id = "eac93639-d58e-4777-82e9-f1e28113d5b2"
 
 [[kv_namespaces]]
 binding = "OAUTH_STORE"
