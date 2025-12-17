@@ -266,7 +266,17 @@ export default {
 
     // Dashboard page
     if (url.pathname === '/dashboard' && request.method === 'GET') {
-      return new Response(renderDashboardPage(authenticatedUser!), {
+      // Fetch user's API keys
+      const apiKeysResult = await env.DB.prepare(`
+        SELECT api_key_id, name, key_prefix, created_at, last_used_at, is_active
+        FROM api_keys
+        WHERE user_id = ? AND is_active = 1
+        ORDER BY created_at DESC
+      `).bind(authenticatedUser!.user_id).all();
+
+      const apiKeys = apiKeysResult.results || [];
+
+      return new Response(renderDashboardPage(authenticatedUser!, apiKeys as any), {
         status: 200,
         headers: { 'Content-Type': 'text/html' }
       });

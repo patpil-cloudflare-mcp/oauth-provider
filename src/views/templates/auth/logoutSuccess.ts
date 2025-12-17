@@ -114,52 +114,6 @@ export function renderLogoutSuccessPage(): string {
       transform: translateY(-1px);
     }
 
-    .divider {
-      height: 1px;
-      background: linear-gradient(to right, transparent, #e5e7eb, transparent);
-      margin: 32px 0;
-    }
-
-    .promo {
-      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-    }
-
-    .promo-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #92400e;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .promo-text {
-      font-size: 14px;
-      color: #78350f;
-      margin-bottom: 16px;
-    }
-
-    .button-buy {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      text-decoration: none;
-      display: inline-block;
-      font-weight: 600;
-      transition: all 0.2s ease;
-    }
-
-    .button-buy:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-    }
-
     .footer {
       font-size: 14px;
       color: #9ca3af;
@@ -209,22 +163,6 @@ export function renderLogoutSuccessPage(): string {
       </a>
       <a href="https://wtyczki.ai" class="button button-secondary">
         🏠 Strona główna
-      </a>
-    </div>
-
-    <!-- Divider -->
-    <div class="divider"></div>
-
-    <!-- Promo Section -->
-    <div class="promo">
-      <div class="promo-title">
-        💡 Potrzebujesz więcej tokenów?
-      </div>
-      <p class="promo-text">
-        Kup pakiet tokenów i korzystaj z serwerów MCP bez ograniczeń!
-      </p>
-      <a href="https://panel.wtyczki.ai" class="button-buy">
-        Kup teraz →
       </a>
     </div>
 

@@ -129,10 +129,6 @@ export async function handleAuthorizeEndpoint(
     SELECT
       user_id,
       email,
-      current_token_balance,
-      total_tokens_purchased,
-      total_tokens_used,
-      stripe_customer_id,
       created_at,
       last_login_at
     FROM users
@@ -766,9 +762,8 @@ function renderConsentPage(params: {
  */
 function formatScope(scope: string): string {
   const scopeNames: Record<string, string> = {
-    'mcp_access': 'Access MCP servers and use your tokens',
+    'mcp_access': 'Access MCP servers on your behalf',
     'user_info': 'View your email and account information',
-    'token_balance': 'View your token balance',
   };
 
   return scopeNames[scope] || scope;

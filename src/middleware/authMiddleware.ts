@@ -7,12 +7,6 @@ import {
 } from '../workos-auth';
 
 // Protected routes that require WorkOS authentication
-// NOTE: /checkout/success is intentionally PUBLIC to support guest checkout flow
-// Guest users complete Stripe payment before authentication, so the success page
-// must be accessible without JWT token. Security is provided by:
-// - Stripe session_id validation (cryptographically secure)
-// - Payment status verification via Stripe API
-// - Idempotency protection (payment_intent_id uniqueness)
 const PROTECTED_ROUTES = [
   '/dashboard',
   '/auth/user',

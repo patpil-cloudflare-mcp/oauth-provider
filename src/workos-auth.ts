@@ -13,7 +13,6 @@ export interface WorkOSAuthEnv {
   USER_SESSIONS: KVNamespace;
   WORKOS_API_KEY: string;
   WORKOS_CLIENT_ID: string;
-  STRIPE_SECRET_KEY: string;
 }
 
 /**
@@ -271,10 +270,6 @@ async function getUserById(userId: string, db: D1Database): Promise<User | null>
     SELECT
       user_id,
       email,
-      current_token_balance,
-      total_tokens_purchased,
-      total_tokens_used,
-      stripe_customer_id,
       created_at,
       last_login_at
     FROM users

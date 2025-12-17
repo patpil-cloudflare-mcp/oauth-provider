@@ -94,10 +94,10 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
     if (!existingUser) {
       console.log(`❌ [custom-auth] User not found: ${email}`);
 
-      // User doesn't exist - show clear error message with link to purchase
+      // User doesn't exist - show clear error message
       const newCsrf = crypto.randomUUID();
       return new Response(renderLoginEmailForm(
-        'Nie znaleziono konta dla tego adresu e-mail. <a href="https://wtyczki.ai" style="font-weight: 600; text-decoration: underline;">Kup tokeny aby utworzyć konto →</a>',
+        'Nie znaleziono konta dla tego adresu e-mail. Sprawdź poprawność adresu lub skontaktuj się z obsługą.',
         returnTo,
         newCsrf
       ), {
@@ -228,10 +228,6 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
       SELECT
         user_id,
         email,
-        current_token_balance,
-        total_tokens_purchased,
-        total_tokens_used,
-        stripe_customer_id,
         created_at,
         last_login_at
       FROM users

@@ -71,11 +71,6 @@ workos_docs({ path: "sso/overview" })
    - Foreign key: `user_id` → users(user_id)
    - Purpose: Audit log for account deletions
 
-**Recent Migration files:**
-- `migrations/0014_drop_transaction_tables.sql` - Removed token tables
-- `migrations/0015_drop_failed_deductions.sql` - Removed reconciliation
-- `migrations/0016_remove_token_columns.sql` - Simplified users table
-
 ---
 
 ## 4. CLOUDFLARE ACCESS CONFIGURATION
@@ -144,17 +139,6 @@ git commit -m "Your changes"
 git push origin main
 ```
 
-Cloudflare will automatically:
-1. Detect the push to GitHub
-2. Build the Worker
-3. Deploy to production
-4. Post status updates to GitHub
-
-**View deployment status:**
-- Check GitHub commit status (green checkmark)
-- View Cloudflare dashboard: [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages)
-- Monitor builds in **Settings → Builds** tab
-
 ---
 
 **Database Migrations:**
@@ -174,18 +158,5 @@ npx wrangler d1 migrations apply mcp-tokens-database --local
 - Allows review before production deployment
 - Ensures data integrity
 - Follows database best practices
-
----
-
-## 6. GETTING HELP
-
-### Documentation Resources
-
-**🔥 PRIMARY SOURCES (Use These First!):**
-- **Cloudflare MCP Server** - Use `search_cloudflare_documentation` for Workers, D1, KV, Durable Objects
-- **Stripe MCP Server** - Use `search_stripe_documentation` for payments, webhooks, API patterns
-
-**Project Documentation:**
-- **Business Context:** Read `business_goal.md`
 
 ---

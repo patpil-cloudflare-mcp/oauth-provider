@@ -11,7 +11,7 @@ export function renderLoginEmailForm(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zaloguj się - MCP Token System</title>
+  <title>Zaloguj się - wtyczki.ai</title>
 
   <!-- Google Fonts: DM Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -206,7 +206,7 @@ export function renderLoginEmailForm(
       ` : ''}
 
       <div class="info">
-        💡 Nie masz jeszcze konta? <a href="https://panel.wtyczki.ai/">Kup tokeny tutaj →</a>
+        💡 Nie masz jeszcze konta? Użyj tego samego formularza, aby się zarejestrować.
       </div>
 
       <form method="POST" action="/auth/login-custom/send-code">
@@ -231,7 +231,7 @@ export function renderLoginEmailForm(
     </div>
 
     <div class="footer">
-      Pierwszy raz tutaj? <a href="https://panel.wtyczki.ai/">Zacznij od zakupu tokenów</a>
+      Pierwszy raz tutaj? Podaj email - konto zostanie utworzone automatycznie.
     </div>
   </div>
 </body>
@@ -251,7 +251,7 @@ export function renderLoginCodeForm(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wprowadź kod - MCP Token System</title>
+  <title>Wprowadź kod - wtyczki.ai</title>
 
   <!-- Google Fonts: DM Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -59,7 +59,7 @@ export function renderHead(options: HeadOptions): string {
   const {
     title,
     description,
-    keywords = 'MCP, tokeny, AI, Model Context Protocol, wtyczki, API',
+    keywords = 'MCP, OAuth, API, Model Context Protocol, wtyczki, AI',
     noIndex = false,
     includeGoogleFonts = true,
   } = options;

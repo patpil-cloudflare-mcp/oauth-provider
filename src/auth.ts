@@ -130,7 +130,7 @@ export async function validateAccessToken(
  * Flow:
  * 1. Query database for user by email
  * 2. If exists: Update last_login_at, return user with isNewUser=false
- * 3. If not exists: Create new user + Stripe customer, return with isNewUser=true
+ * 3. If not exists: Create new user account, return with isNewUser=true
  *
  * @param email - User email from JWT
  * @param env - Worker environment
@@ -196,10 +196,6 @@ async function getUserById(userId: string, db: D1Database): Promise<User | null>
     SELECT
       user_id,
       email,
-      current_token_balance,
-      total_tokens_purchased,
-      total_tokens_used,
-      stripe_customer_id,
       created_at,
       last_login_at
     FROM users
@@ -217,10 +213,6 @@ async function getUserByEmail(email: string, db: D1Database): Promise<User | nul
     SELECT
       user_id,
       email,
-      current_token_balance,
-      total_tokens_purchased,
-      total_tokens_used,
-      stripe_customer_id,
       created_at,
       last_login_at
     FROM users

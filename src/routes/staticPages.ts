@@ -3,7 +3,7 @@ import { renderPublicHomePage } from '../views';
 
 /**
  * Handle root path (/) with subdomain-aware routing
- * - panel.wtyczki.ai: Serve public home page (guest checkout)
+ * - panel.wtyczki.ai: Serve public home page (login/registration)
  * - api.wtyczki.ai: Show API status page
  */
 export async function handleRootPath(request: Request): Promise<Response | null> {
@@ -16,7 +16,7 @@ export async function handleRootPath(request: Request): Promise<Response | null>
 
   const hostname = request.headers.get('host') || '';
 
-  // Dashboard subdomain - serve public home page (guest checkout)
+  // Dashboard subdomain - serve public home page (login/registration)
   if (hostname.includes('panel.wtyczki.ai')) {
     return new Response(renderPublicHomePage(), {
       status: 200,
@@ -27,13 +27,15 @@ export async function handleRootPath(request: Request): Promise<Response | null>
   // API subdomain - show API status page
   if (hostname.includes('api.wtyczki.ai')) {
     return new Response(JSON.stringify({
-      service: 'MCP Token System API',
+      service: 'MCP OAuth Provider',
       status: 'operational',
-      version: '1.0.0',
+      version: '2.0.0',
       endpoints: {
-        webhook: '/stripe/webhook',
-        checkout: '/checkout/create',
-        oauth: '/oauth/authorize'
+        oauth_authorize: '/oauth/authorize',
+        oauth_token: '/oauth/token',
+        oauth_userinfo: '/oauth/userinfo',
+        oauth_revoke: '/oauth/revoke',
+        well_known: '/.well-known/oauth-authorization-server'
       },
       documentation: 'https://wtyczki.ai/docs'
     }), {

@@ -398,10 +398,6 @@ export function renderSettingsPage(user: User): string {
         <span class="info-value">${user.email}</span>
       </div>
       <div class="info-row">
-        <span class="info-label">Aktualny stan tokenów</span>
-        <span class="info-value">${user.current_token_balance} tokenów</span>
-      </div>
-      <div class="info-row">
         <span class="info-label">Konto utworzone</span>
         <span class="info-value">${new Date(user.created_at).toLocaleDateString('pl-PL')}</span>
       </div>
@@ -444,11 +440,9 @@ export function renderSettingsPage(user: User): string {
       <div class="warning-box">
         <strong>⚠️ Uwaga! Usunięcie konta jest trwałe i nieodwracalne.</strong>
         <ul>
-          <li><strong>Utracisz dostęp</strong> do swojego konta i wszystkich tokenów</li>
-          <li><strong>Wszystkie niewykorzystane tokeny</strong> (${user.current_token_balance} tokenów) zostaną przepadnięte</li>
-          <li><strong>Nie ma możliwości zwrotu</strong> środków za niewykorzystane tokeny</li>
+          <li><strong>Utracisz dostęp</strong> do swojego konta</li>
+          <li><strong>Wszystkie klucze API</strong> zostaną odwołane</li>
           <li><strong>Twoje dane osobowe</strong> zostaną zanonimizowane zgodnie z GDPR</li>
-          <li><strong>Historia transakcji</strong> zostanie zachowana dla celów księgowych (zanonimizowana)</li>
         </ul>
       </div>
 
@@ -466,8 +460,8 @@ export function renderSettingsPage(user: User): string {
           <p><strong>Utracisz:</strong></p>
           <ul>
             <li>Dostęp do swojego konta</li>
-            <li><strong>${user.current_token_balance} tokenów</strong> (bez zwrotu)</li>
-            <li>Całą historię zakupów i użycia</li>
+            <li>Wszystkie klucze API</li>
+            <li>Wszystkie autoryzowane aplikacje</li>
           </ul>
         </div>
         <p>Jeśli jesteś pewien, kliknij "Kontynuuj", aby przejść do ostatecznego potwierdzenia.</p>
@@ -482,45 +476,24 @@ export function renderSettingsPage(user: User): string {
   <!-- Modal: Step 2 - Final Confirmation with Email Verification -->
   <div id="modal-confirmation" class="modal-overlay">
     <div class="modal" style="max-width: 600px;">
-      <h2 class="modal-title">⚠️ Czy na pewno chcesz usunąć konto?</h2>
+      <h2 class="modal-title">⚠️ Ostateczne potwierdzenie usunięcia konta</h2>
 
-      <!-- Token Balance Warning -->
+      <!-- Warning -->
       <div style="background: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 20px; margin: 16px 0;">
-        <h3 style="color: #dc2626; font-size: 18px; margin-bottom: 12px;">❌ UTRACISZ WSZYSTKIE TOKENY</h3>
-
-        <div style="background: white; padding: 16px; border-radius: 6px; margin-bottom: 16px;">
-          <p style="font-size: 16px; margin-bottom: 8px;">
-            Aktualny stan: <strong style="color: #dc2626; font-size: 24px;">${user.current_token_balance}</strong> tokenów
-          </p>
-          <p style="color: #6b7280; font-size: 14px;">
-            Wartość: ~${(user.current_token_balance * 0.0125).toFixed(2)} PLN
-          </p>
-        </div>
-
-        <!-- No Refund Notice -->
-        <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; padding: 16px;">
-          <p style="margin-bottom: 8px;">
-            ℹ️ <strong>BRAK ZWROTU ŚRODKÓW</strong>
-          </p>
-          <p style="font-size: 13px; color: #6b7280; line-height: 1.5; margin-bottom: 8px;">
-            Tokeny są treścią cyfrową dostarczoną natychmiast.
-            Zgodnie z <strong>art. 38 ust. 13 ustawy o prawach konsumenta</strong>,
-            przy zakupie wyraziłeś zgodę na natychmiastowe rozpoczęcie świadczenia
-            i utraciłeś prawo do odstąpienia od umowy.
-          </p>
-          <p style="color: #dc2626; font-weight: 600; font-size: 14px;">
-            Nie przysługuje zwrot środków za niewykorzystane tokeny.
-          </p>
-        </div>
+        <h3 style="color: #dc2626; font-size: 18px; margin-bottom: 12px;">❌ Ta operacja jest nieodwracalna</h3>
+        <p style="font-size: 14px; color: #6b7280; line-height: 1.5;">
+          Po usunięciu konta wszystkie Twoje dane zostaną zanonimizowane zgodnie z wymogami GDPR.
+          Nie będzie możliwości przywrócenia konta.
+        </p>
       </div>
 
       <!-- What Will Be Deleted -->
       <div style="margin: 16px 0;">
         <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Co zostanie usunięte:</h3>
         <ul style="margin-left: 20px; line-height: 1.8;">
-          <li>❌ <strong>${user.current_token_balance}</strong> tokenów (bez zwrotu)</li>
-          <li>❌ Cała historia zakupów</li>
-          <li>❌ Wszystkie logi użycia MCP</li>
+          <li>❌ Wszystkie klucze API</li>
+          <li>❌ Wszystkie autoryzowane aplikacje</li>
+          <li>❌ Dane konta</li>
           <li>✅ Email będzie dostępny do ponownej rejestracji</li>
         </ul>
       </div>
