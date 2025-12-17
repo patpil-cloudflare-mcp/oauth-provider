@@ -138,7 +138,7 @@ export async function validateAccessToken(
  */
 export async function getOrCreateUser(
   email: string,
-  env: AuthEnv
+  env: { DB: D1Database }
 ): Promise<{ user: User; isNewUser: boolean }> {
   // Check if user exists
   const existingUser = await getUserByEmail(email, env.DB);
