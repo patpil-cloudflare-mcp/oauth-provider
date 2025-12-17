@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Regulamin Świadczenia Usług - wtyczki.ai</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 2em;
+    }
+
+    h2 {
+      color: #764ba2;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      font-size: 1.5em;
+    }
+
+    h3 {
+      color: #667eea;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+
+    p {
+      margin-bottom: 15px;
+      text-align: justify;
+    }
+
+    ul, ol {
+      margin-left: 30px;
+      margin-bottom: 15px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    .updated {
+      color: #666;
+      font-size: 0.9em;
+      margin-bottom: 30px;
+    }
+
+    .highlight-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .info-box {
+      background: #d1ecf1;
+      border-left: 4px solid #0c5460;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .contact-box {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border-left: 4px solid #667eea;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 30px;
+      padding: 12px 24px;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: background 0.3s;
+    }
+
+    .back-link:hover {
+      background: #764ba2;
+    }
+
+    strong {
+      color: #333;
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    table th,
+    table td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+
+    table th {
+      background: #667eea;
+      color: white;
+      font-weight: 600;
+    }
+
+    table tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 1.5em;
+      }
+
+      h2 {
+        font-size: 1.3em;
+      }
+
+      table {
+        font-size: 0.9em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Regulamin Świadczenia Usług</h1>
+    <p class="updated">Ostatnia aktualizacja: 13 października 2025</p>
+    <p class="updated">Regulamin obowiązuje od: 13 października 2025</p>
+
+    <h2>I. POSTANOWIENIA OGÓLNE</h2>
+
+    <h3>§1. Definicje</h3>
+    <p>Użyte w Regulaminie pojęcia oznaczają:</p>
+    <ol>
+      <li><strong>Usługodawca</strong> - Wtyczki DEV Patryk Pilat, prowadzący działalność gospodarczą, świadczący usługi drogą elektroniczną za pośrednictwem Serwisu;</li>
+      <li><strong>Serwis</strong> - serwis internetowy dostępny pod adresami: wtyczki.ai, api.wtyczki.ai, panel.wtyczki.ai;</li>
+      <li><strong>Użytkownik / Klient</strong> - osoba fizyczna, osoba prawna lub jednostka organizacyjna nieposiadająca osobowości prawnej, która korzysta z Usług świadczonych przez Usługodawcę;</li>
+      <li><strong>Konto</strong> - indywidualny panel użytkownika utworzony w Serwisie, identyfikowany unikalnym adresem email i przypisanym identyfikatorem (user_id);</li>
+      <li><strong>Token</strong> - wirtualna jednostka rozliczeniowa używana do korzystania z Serwerów MCP; 1 token = 1 operacja podstawowa;</li>
+      <li><strong>Pakiet Tokenów</strong> - zestaw określonej liczby tokenów oferowany do zakupu za określoną cenę (np. 2000 tokenów za 25 PLN, 5500 tokenów za 59 PLN, 12000 tokenów za 119 PLN);</li>
+      <li><strong>Serwer MCP</strong> - usługa oparta na protokole Model Context Protocol (MCP), dostępna za pośrednictwem Serwisu, umożliwiająca wykonywanie operacji AI (np. Calculator MCP);</li>
+      <li><strong>Saldo Tokenów</strong> - liczba dostępnych tokenów przypisanych do Konta Użytkownika;</li>
+      <li><strong>Transakcja</strong> - operacja zakupu tokenów lub ich zużycia podczas korzystania z Serwerów MCP;</li>
+      <li><strong>OAuth</strong> - protokół uwierzytelniania używany do bezpiecznego dostępu do Serwerów MCP;</li>
+      <li><strong>Stripe</strong> - zewnętrzny dostawca usług płatniczych (Stripe, Inc.), za pośrednictwem którego realizowane są płatności;</li>
+      <li><strong>Regulamin</strong> - niniejszy dokument określający zasady świadczenia usług przez Usługodawcę.</li>
+    </ol>
+
+    <h3>§2. Zakres stosowania Regulaminu</h3>
+    <ol>
+      <li>Regulamin określa:
+        <ul>
+          <li>Zasady tworzenia i korzystania z Konta w Serwisie;</li>
+          <li>Warunki zakupu Pakietów Tokenów;</li>
+          <li>Zasady korzystania z Serwerów MCP;</li>
+          <li>Prawa i obowiązki Użytkowników oraz Usługodawcy;</li>
+          <li>Zasady odpowiedzialności stron;</li>
+          <li>Tryb postępowania reklamacyjnego.</li>
+        </ul>
+      </li>
+      <li>Użytkownik zobowiązany jest do zapoznania się z treścią Regulaminu przed rozpoczęciem korzystania z Serwisu.</li>
+      <li>Rozpoczęcie korzystania z Serwisu oznacza akceptację postanowień Regulaminu.</li>
+      <li>Regulamin jest udostępniony nieodpłatnie w formie elektronicznej na stronie Serwisu pod adresem: <a href="https://panel.wtyczki.ai/terms">https://panel.wtyczki.ai/terms</a></li>
+    </ol>
+
+    <h2>II. WYMAGANIA TECHNICZNE</h2>
+
+    <h3>§3. Wymagania systemowe</h3>
+    <p>Korzystanie z Serwisu wymaga:</p>
+    <ol>
+      <li>Urządzenia z dostępem do sieci Internet;</li>
+      <li>Przeglądarki internetowej obsługującej JavaScript, cookies oraz protokół HTTPS (zalecane: Chrome, Firefox, Safari, Edge w aktualnych wersjach);</li>
+      <li>Aktywnego konta email do rejestracji i komunikacji;</li>
+      <li>Akceptacji plików cookies niezbędnych do działania Serwisu.</li>
+    </ol>
+
+    <h2>III. ZAKŁADANIE I KORZYSTANIE Z KONTA</h2>
+
+    <h3>§4. Rejestracja Konta</h3>
+    <ol>
+      <li>Konto w Serwisie zakładane jest automatycznie przy pierwszym zakupie Pakietu Tokenów.</li>
+      <li>Każde Konto identyfikowane jest przez:
+        <ul>
+          <li>Unikalny identyfikator użytkownika (user_id);</li>
+          <li>Adres email podany podczas zakupu;</li>
+        </ul>
+      </li>
+      <li>Użytkownik zobowiązany jest do podania prawdziwych i aktualnych danych.</li>
+      <li>Zakazane jest:
+        <ul>
+          <li>Tworzenie wielu kont przez jedną osobę w celu obejścia ograniczeń Serwisu;</li>
+          <li>Podawanie danych osobowych innych osób bez ich zgody;</li>
+          <li>Tworzenie kont w celach niezgodnych z przeznaczeniem Serwisu.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>§5. Dostęp do Konta</h3>
+    <ol>
+      <li>Dostęp do Konta odbywa się za pośrednictwem protokołu OAuth.</li>
+      <li>Użytkownik odpowiada za zachowanie poufności danych dostępowych (tokenów OAuth).</li>
+      <li>Użytkownik zobowiązany jest do:
+        <ul>
+          <li>Nieprzekazywania danych dostępowych osobom trzecim;</li>
+          <li>Niezwłocznego poinformowania Usługodawcy o podejrzeniu nieautoryzowanego dostępu do Konta;</li>
+        </ul>
+      </li>
+      <li>Użytkownik ponosi odpowiedzialność za wszelkie działania wykonane na swoim Koncie.</li>
+    </ol>
+
+    <h2>IV. ZAKUP TOKENÓW</h2>
+
+    <h3>§6. Oferta Pakietów Tokenów</h3>
+    <p>Usługodawca oferuje następujące Pakiety Tokenów:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nazwa Pakietu</th>
+          <th>Liczba Tokenów</th>
+          <th>Cena</th>
+          <th>Cena za 1 Token</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Starter</td>
+          <td>500 tokenów</td>
+          <td>10 PLN</td>
+          <td>0,02 PLN</td>
+        </tr>
+        <tr>
+          <td>Plus</td>
+          <td>2000 tokenów</td>
+          <td>25 PLN</td>
+          <td>0,0125 PLN</td>
+        </tr>
+        <tr>
+          <td>Pro</td>
+          <td>5500 tokenów</td>
+          <td>59 PLN</td>
+          <td>0,0107 PLN</td>
+        </tr>
+        <tr>
+          <td>Enterprise</td>
+          <td>12000 tokenów</td>
+          <td>119 PLN</td>
+          <td>0,0099 PLN</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box">
+      <p><strong>Uwaga:</strong> Ceny mogą ulec zmianie. Aktualna oferta dostępna jest w Panelu Użytkownika pod adresem: <a href="https://panel.wtyczki.ai">https://panel.wtyczki.ai</a></p>
+    </div>
+
+    <h3>§7. Proces zakupu</h3>
+    <ol>
+      <li>Zakup Pakietu Tokenów odbywa się poprzez:
+        <ul>
+          <li>Wybór Pakietu w Panelu Użytkownika;</li>
+          <li>Kliknięcie przycisku "Kup teraz";</li>
+          <li>Przekierowanie do formularza płatności Stripe;</li>
+          <li>Wypełnienie danych płatności i potwierdzenie transakcji.</li>
+        </ul>
+      </li>
+      <li>Po pomyślnym zakończeniu płatności, tokeny są automatycznie dodawane do Salda Tokenów Użytkownika.</li>
+      <li>Użytkownik otrzymuje potwierdzenie zakupu na ekranie oraz (opcjonalnie) emailem.</li>
+    </ol>
+
+    <h3>§8. Warunki płatności</h3>
+    <ol>
+      <li>Płatności obsługiwane są wyłącznie przez zewnętrznego dostawcę - Stripe, Inc.</li>
+      <li>Akceptowane metody płatności:
+        <ul>
+          <li>Karty płatnicze: Visa, Mastercard, American Express;</li>
+          <li>Inne metody dostępne w Stripe (w zależności od regionu).</li>
+        </ul>
+      </li>
+      <li>Transakcje płatnicze są realizowane w walucie PLN (Polski Złoty).</li>
+      <li>Usługodawca nie przechowuje danych kart płatniczych - dane są przetwarzane bezpośrednio przez Stripe zgodnie z standardem PCI DSS.</li>
+      <li>Użytkownik zobowiązany jest do zapewnienia, że środki płatnicze wykorzystane do zakupu pochodzą z legalnych źródeł.</li>
+    </ol>
+
+    <h3>§9. Ważność Tokenów</h3>
+    <ol>
+      <li><strong>Tokeny nie wygasają</strong> - zakupione tokeny pozostają na Koncie Użytkownika bez ograniczenia czasowego.</li>
+      <li>Tokeny są przeznaczone wyłącznie do użytku osobistego i nie mogą być:
+        <ul>
+          <li>Sprzedawane lub przekazywane osobom trzecim;</li>
+          <li>Wymieniane na środki pieniężne;</li>
+          <li>Przenoszone na inne Konta (z wyjątkiem sytuacji opisanych w §10).</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>§10. Zwroty i reklamacje zakupów</h3>
+    <ol>
+      <li><strong>Prawo odstąpienia od umowy (14 dni)</strong>
+        <ul>
+          <li>Użytkownik będący konsumentem ma prawo odstąpić od umowy w terminie 14 dni od daty zakupu bez podania przyczyny.</li>
+          <li>Prawo odstąpienia wygasa, jeśli Użytkownik rozpoczął korzystanie z zakupionych tokenów (zużył choć jeden token).</li>
+          <li>Odstąpienie od umowy wymaga przesłania oświadczenia na adres: <a href="mailto:support@wtyczki.pl">support@wtyczki.pl</a></li>
+        </ul>
+      </li>
+      <li><strong>Zwrot środków w przypadku błędów technicznych</strong>
+        <ul>
+          <li>Jeśli płatność została pobrana, ale tokeny nie zostały dodane z powodu błędu systemu, Użytkownik ma prawo do zwrotu pełnej kwoty lub dodania tokenów.</li>
+          <li>Zgłoszenie należy wysłać w ciągu 30 dni od daty transakcji na adres: <a href="mailto:support@wtyczki.pl">support@wtyczki.pl</a></li>
+        </ul>
+      </li>
+      <li><strong>Zwrot środków w przypadku wielokrotnego naliczenia</strong>
+        <ul>
+          <li>Jeśli ta sama płatność została przetworzona więcej niż raz (pomimo zabezpieczeń idempotencji), nadpłacona kwota zostaje zwrócona automatycznie lub na wniosek Użytkownika.</li>
+        </ul>
+      </li>
+      <li><strong>Brak zwrotów po zużyciu tokenów</strong>
+        <ul>
+          <li>Po zużyciu tokenów (wykonaniu operacji na Serwerach MCP) zwrot środków nie jest możliwy.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h2>V. KORZYSTANIE Z SERWERÓW MCP</h2>
+
+    <h3>§11. Dostęp do Serwerów MCP</h3>
+    <ol>
+      <li>Użytkownik uzyskuje dostęp do Serwerów MCP poprzez uwierzytelnienie OAuth.</li>
+      <li>Każdy Serwer MCP pobiera określoną liczbę tokenów za wykonanie operacji.</li>
+      <li>Przed wykonaniem operacji, system sprawdza czy Użytkownik posiada wystarczające Saldo Tokenów.</li>
+      <li>Operacje są wykonywane tylko wtedy, gdy saldo jest wystarczające.</li>
+    </ol>
+
+    <h3>§12. Koszty operacji</h3>
+    <p>Liczba tokenów pobieranych za operację zależy od jej złożoności:</p>
+    <ul>
+      <li><strong>Operacje podstawowe (np. Calculator MCP)</strong> - 1 token za operację (dodawanie, odejmowanie, mnożenie, dzielenie);</li>
+      <li><strong>Operacje zaawansowane</strong> - od 5 do 10+ tokenów (w zależności od Serwera MCP i typu operacji).</li>
+    </ul>
+    <p>Dokładna lista dostępnych Serwerów MCP i ich kosztów jest dostępna w Panelu Użytkownika.</p>
+
+    <h3>§13. Zasady korzystania z Serwerów MCP</h3>
+    <ol>
+      <li>Użytkownik zobowiązuje się do:
+        <ul>
+          <li>Korzystania z Serwerów MCP zgodnie z ich przeznaczeniem;</li>
+          <li>Niepodejmowania prób obejścia systemu rozliczeń tokenów;</li>
+          <li>Nieprzekraczania rozsądnych limitów użycia (brak automatycznych skryptów przeciążających infrastrukturę);</li>
+          <li>Nieutrudniania korzystania z Serwisu innym Użytkownikom.</li>
+        </ul>
+      </li>
+      <li><strong>Zakazane działania:</strong>
+        <ul>
+          <li>Próby nieautoryzowanego dostępu do systemów Usługodawcy;</li>
+          <li>Wykorzystywanie podatności zabezpieczeń;</li>
+          <li>Ataki typu DDoS lub nadmierne obciążanie serwerów;</li>
+          <li>Używanie Serwisu do działań niezgodnych z prawem;</li>
+          <li>Reverse engineering, dekompilacja lub dezasemblacja oprogramowania;</li>
+          <li>Kopiowanie, modyfikowanie lub rozpowszechnianie treści Serwisu bez zgody Usługodawcy.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>§14. Historia zużycia tokenów</h3>
+    <ol>
+      <li>Użytkownik ma dostęp do pełnej historii transakcji w Panelu Użytkownika.</li>
+      <li>Historia obejmuje:
+        <ul>
+          <li>Datę i godzinę operacji;</li>
+          <li>Typ operacji (zakup lub zużycie);</li>
+          <li>Nazwę Serwera MCP (dla operacji zużycia);</li>
+          <li>Liczbę zużytych/dodanych tokenów;</li>
+          <li>Saldo po operacji.</li>
+        </ul>
+      </li>
+      <li>W przypadku rozbieżności w historii, Użytkownik powinien niezwłocznie zgłosić to Usługodawcy.</li>
+    </ol>
+
+    <h2>VI. ODPOWIEDZIALNOŚĆ STRON</h2>
+
+    <h3>§15. Odpowiedzialność Usługodawcy</h3>
+    <ol>
+      <li>Usługodawca zobowiązuje się do:
+        <ul>
+          <li>Świadczenia usług z należytą starannością;</li>
+          <li>Zapewnienia bezpieczeństwa danych osobowych zgodnie z RODO;</li>
+          <li>Utrzymywania Serwisu w stanie umożliwiającym korzystanie z niego;</li>
+          <li>Niezwłocznego informowania o planowanych przerwach technicznych.</li>
+        </ul>
+      </li>
+      <li><strong>Ograniczenia odpowiedzialności:</strong>
+        <ul>
+          <li>Usługodawca nie ponosi odpowiedzialności za przerwy w działaniu Serwisu wynikające z przyczyn niezależnych od niego (awarie zewnętrznych dostawców: Cloudflare, Stripe, problemy z Internetem);</li>
+          <li>Usługodawca nie gwarantuje nieprzerwania działania Serwisu i nie ponosi odpowiedzialności za czasową niedostępność usług z powodu konserwacji lub aktualizacji;</li>
+          <li>Maksymalna odpowiedzialność Usługodawcy wobec Użytkownika ograniczona jest do wartości tokenów zakupionych w ciągu ostatnich 12 miesięcy;</li>
+          <li>Usługodawca nie odpowiada za skutki nieprawidłowego użycia Serwerów MCP przez Użytkownika;</li>
+          <li>Usługodawca nie ponosi odpowiedzialności za treści generowane przez Serwery MCP oparte na modelach AI - odpowiedzialność za wykorzystanie wyników spoczywa na Użytkowniku.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>§16. Odpowiedzialność Użytkownika</h3>
+    <ol>
+      <li>Użytkownik ponosi pełną odpowiedzialność za:
+        <ul>
+          <li>Wszystkie działania wykonane na swoim Koncie;</li>
+          <li>Zabezpieczenie danych dostępowych (tokenów OAuth);</li>
+          <li>Treści i dane przetwarzane za pośrednictwem Serwerów MCP;</li>
+          <li>Zgodność z prawem swojego korzystania z Serwisu.</li>
+        </ul>
+      </li>
+      <li>Użytkownik zobowiązuje się do naprawienia szkód wyrządzonych Usługodawcy wskutek naruszenia Regulaminu.</li>
+    </ol>
+
+    <h2>VII. DOSTĘPNOŚĆ USŁUG</h2>
+
+    <h3>§17. Dostępność Serwisu</h3>
+    <ol>
+      <li>Usługodawca dąży do zapewnienia dostępności Serwisu 24 godziny na dobę, 7 dni w tygodniu.</li>
+      <li>Dopuszczalne są przerwy techniczne związane z:
+        <ul>
+          <li>Konserwacją infrastruktury;</li>
+          <li>Aktualizacjami oprogramowania;</li>
+          <li>Usuwaniem błędów i podatności bezpieczeństwa;</li>
+          <li>Awariami niezależnymi od Usługodawcy.</li>
+        </ul>
+      </li>
+      <li>Planowane przerwy techniczne (o ile to możliwe) będą ogłaszane z wyprzedzeniem.</li>
+    </ol>
+
+    <h3>§18. Modyfikacja i zawieszenie usług</h3>
+    <ol>
+      <li>Usługodawca zastrzega sobie prawo do:
+        <ul>
+          <li>Wprowadzania zmian w funkcjonalnościach Serwisu;</li>
+          <li>Dodawania lub usuwania Serwerów MCP;</li>
+          <li>Zmiany kosztów tokenowych poszczególnych operacji (z zachowaniem okresu przejściowego dla istniejących Użytkowników);</li>
+          <li>Czasowego zawieszenia dostępu do Serwisu w sytuacjach kryzysowych.</li>
+        </ul>
+      </li>
+      <li>O istotnych zmianach Użytkownicy zostaną poinformowani z 14-dniowym wyprzedzeniem.</li>
+    </ol>
+
+    <h2>VIII. REKLAMACJE</h2>
+
+    <h3>§19. Składanie reklamacji</h3>
+    <ol>
+      <li>Użytkownik ma prawo złożyć reklamację dotyczącą usług świadczonych przez Usługodawcę.</li>
+      <li>Reklamację należy przesłać na adres: <a href="mailto:support@wtyczki.pl">support@wtyczki.pl</a></li>
+      <li>Reklamacja powinna zawierać:
+        <ul>
+          <li>Imię i nazwisko lub nazwę firmy;</li>
+          <li>Adres email przypisany do Konta;</li>
+          <li>Opis problemu wraz z datą jego wystąpienia;</li>
+          <li>Oczekiwany sposób rozpatrzenia reklamacji.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>§20. Rozpatrywanie reklamacji</h3>
+    <ol>
+      <li>Usługodawca rozpatrzy reklamację w terminie <strong>14 dni roboczych</strong> od daty jej otrzymania.</li>
+      <li>W przypadkach skomplikowanych, wymagających dodatkowych analiz, termin może zostać przedłużony do 30 dni - Użytkownik zostanie o tym poinformowany.</li>
+      <li>Odpowiedź na reklamację zostanie wysłana na adres email Użytkownika.</li>
+      <li>Jeśli reklamacja zostanie uznana, Usługodawca zaproponuje odpowiednie rozwiązanie (np. zwrot środków, dodanie tokenów, naprawa błędu).</li>
+    </ol>
+
+    <h2>IX. ROZWIĄZANIE UMOWY I USUNIĘCIE KONTA</h2>
+
+    <h3>§21. Rozwiązanie umowy przez Użytkownika</h3>
+    <ol>
+      <li>Użytkownik może w każdej chwili zaprzestać korzystania z Serwisu.</li>
+      <li>Aby usunąć Konto, należy przesłać wniosek na adres: <a href="mailto:support@wtyczki.pl">support@wtyczki.pl</a></li>
+      <li>Po usunięciu Konta:
+        <ul>
+          <li>Dostęp do Serwisu zostaje trwale zablokowany;</li>
+          <li>Niewykorzystane tokeny przepadają (brak zwrotu środków za niewykorzystane tokeny);</li>
+          <li>Dane osobowe są usuwane zgodnie z Polityką Prywatności (z wyjątkiem danych wymaganych do przechowania przez przepisy prawa - np. dokumentacja księgowa przez 5 lat).</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>§22. Rozwiązanie umowy przez Usługodawcę</h3>
+    <ol>
+      <li>Usługodawca może rozwiązać umowę i zablokować Konto Użytkownika w przypadku:
+        <ul>
+          <li>Naruszenia postanowień Regulaminu;</li>
+          <li>Wykorzystywania Serwisu w sposób niezgodny z prawem;</li>
+          <li>Podejmowania działań szkodliwych dla Serwisu lub innych Użytkowników;</li>
+          <li>Nieuiszczenia należności za usługi (w przypadku należności cyklicznych - jeśli zostaną wprowadzone w przyszłości).</li>
+        </ul>
+      </li>
+      <li>Przed zablokowaniem Konta, Usługodawca wyśle ostrzeżenie na adres email Użytkownika (z wyjątkiem przypadków rażącego naruszenia prawa lub bezpieczeństwa).</li>
+      <li>W przypadku zablokowania Konta z przyczyn leżących po stronie Użytkownika, niewykorzystane tokeny przepadają bez zwrotu środków.</li>
+    </ol>
+
+    <h2>X. WŁASNOŚĆ INTELEKTUALNA</h2>
+
+    <h3>§23. Prawa autorskie</h3>
+    <ol>
+      <li>Wszelkie prawa do Serwisu, w tym:
+        <ul>
+          <li>Kod źródłowy aplikacji;</li>
+          <li>Szata graficzna i elementy wizualne;</li>
+          <li>Znaki towarowe i logo "wtyczki.ai";</li>
+          <li>Dokumentacja i treści;</li>
+        </ul>
+        należą wyłącznie do Usługodawcy i są chronione prawem autorskim.
+      </li>
+      <li>Użytkownik nie nabywa żadnych praw własności intelektualnej do Serwisu.</li>
+      <li>Zakazane jest kopiowanie, modyfikowanie, rozpowszechnianie lub wykorzystywanie elementów Serwisu bez wyraźnej zgody Usługodawcy.</li>
+    </ol>
+
+    <h3>§24. Licencja na korzystanie</h3>
+    <ol>
+      <li>Usługodawca udziela Użytkownikowi niewyłącznej, nieprzenoszalnej, ograniczonej licencji na korzystanie z Serwisu wyłącznie w celach osobistych.</li>
+      <li>Licencja wygasa z chwilą rozwiązania umowy lub usunięcia Konta.</li>
+    </ol>
+
+    <h2>XI. POSTANOWIENIA KOŃCOWE</h2>
+
+    <h3>§25. Zmiany Regulaminu</h3>
+    <ol>
+      <li>Usługodawca zastrzega sobie prawo do wprowadzania zmian w Regulaminie.</li>
+      <li>Zmiany Regulaminu mogą być wprowadzane z przyczyn:
+        <ul>
+          <li>Zmian w przepisach prawa;</li>
+          <li>Wprowadzenia nowych funkcjonalności;</li>
+          <li>Poprawy bezpieczeństwa lub jakości usług;</li>
+          <li>Decyzji biznesowych Usługodawcy.</li>
+        </ul>
+      </li>
+      <li>O zmianach Regulaminu Użytkownicy zostaną powiadomieni:
+        <ul>
+          <li>Przez publikację nowego Regulaminu w Serwisie;</li>
+          <li>Przez wysłanie informacji emailem (dla zmian istotnych);</li>
+          <li>Przez wyświetlenie komunikatu po zalogowaniu do Panelu Użytkownika.</li>
+        </ul>
+      </li>
+      <li>Zmiany wchodzą w życie po upływie 14 dni od daty ogłoszenia.</li>
+      <li>Użytkownik, który nie akceptuje zmian, ma prawo rozwiązać umowę przed wejściem zmian w życie. Brak rozwiązania umowy oznacza akceptację nowych warunków.</li>
+    </ol>
+
+    <h3>§26. Prawo właściwe i rozstrzyganie sporów</h3>
+    <ol>
+      <li>Prawem właściwym dla umów zawieranych za pośrednictwem Serwisu jest prawo polskie.</li>
+      <li>W sprawach nieuregulowanych Regulaminem zastosowanie mają przepisy:
+        <ul>
+          <li>Ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną (Dz.U. 2002 nr 144 poz. 1204 z późn. zm.);</li>
+          <li>Ustawy z dnia 30 maja 2014 r. o prawach konsumenta (Dz.U. 2014 poz. 827 z późn. zm.);</li>
+          <li>Kodeksu cywilnego;</li>
+          <li>RODO (Rozporządzenie Parlamentu Europejskiego i Rady (UE) 2016/679).</li>
+        </ul>
+      </li>
+      <li>Strony będą dążyły do polubownego rozwiązania sporów wynikających z niniejszego Regulaminu.</li>
+      <li>W przypadku braku porozumienia, spory będą rozstrzygane przez sąd powszechny właściwy według przepisów Kodeksu postępowania cywilnego.</li>
+      <li>Konsumenci mogą skorzystać z pozasądowych sposobów rozpatrywania reklamacji i dochodzenia roszczeń poprzez:
+        <ul>
+          <li>Wojewódzkie Inspektoraty Inspekcji Handlowej;</li>
+          <li>Stałe polubowne sądy konsumenckie przy Wojewódzkich Inspektoratach Inspekcji Handlowej;</li>
+          <li>Platformę ODR (Online Dispute Resolution): <a href="https://ec.europa.eu/consumers/odr" target="_blank">https://ec.europa.eu/consumers/odr</a></li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>§27. Dane kontaktowe Usługodawcy</h3>
+    <div class="contact-box">
+      <p><strong>Wtyczki DEV Patryk Pilat</strong></p>
+      <p><strong>Email:</strong> <a href="mailto:support@wtyczki.pl">support@wtyczki.pl</a></p>
+      <p><strong>Strona internetowa:</strong> <a href="https://wtyczki.ai">https://wtyczki.ai</a></p>
+      <p><strong>Panel Użytkownika:</strong> <a href="https://panel.wtyczki.ai">https://panel.wtyczki.ai</a></p>
+    </div>
+
+    <h3>§28. Postanowienia końcowe</h3>
+    <ol>
+      <li>Regulamin wchodzi w życie z dniem 13 października 2025 roku.</li>
+      <li>W przypadku sprzeczności pomiędzy postanowieniami Regulaminu a Polityką Prywatności, pierwszeństwo mają postanowienia Polityki Prywatności w zakresie ochrony danych osobowych.</li>
+      <li>Jeżeli którekolwiek z postanowień Regulaminu zostanie uznane za nieważne lub nieskuteczne, pozostałe postanowienia zachowują pełną moc.</li>
+      <li>Regulamin jest dostępny nieodpłatnie w formie elektronicznej pod adresem: <a href="https://panel.wtyczki.ai/terms">https://panel.wtyczki.ai/terms</a></li>
+    </ol>
+
+    <hr style="margin: 40px 0; border: none; border-top: 1px solid #ddd;">
+
+    <p style="text-align: center; color: #666; font-size: 0.9em;">
+      <strong>Wtyczki DEV Patryk Pilat</strong><br>
+      System Tokenów MCP | wtyczki.ai<br>
+      Email: <a href="mailto:support@wtyczki.pl">support@wtyczki.pl</a>
+    </p>
+
+    <a href="https://panel.wtyczki.ai" class="back-link">← Wróć do panelu</a>
+  </div>
+</body>
+</html>

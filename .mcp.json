@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "cloudflare": {
+      "type": "http",
+      "url": "https://docs.mcp.cloudflare.com/mcp"
+    },
+    "workos": {
+      "command": "npx",
+      "args": ["-y", "@workos/mcp-docs-server"]
+    }
+  }
+}

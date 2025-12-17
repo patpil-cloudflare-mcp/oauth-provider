@@ -1,0 +1,452 @@
+
+  return {
+    isProcessed: !!existing,
+    existingTransaction: existing
+  };
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+
+    // ============================================================
+    // MCP CALCULATOR ENDPOINTS (OAuth Bearer token required)
+    // ============================================================
+
+    // Calculator operation endpoint
+    if (url.pathname === '/mcp/calculator' && request.method === 'POST') {
+      return await handleCalculatorRequest(request, env.DB, env.OAUTH_STORE);
+    }
+
+    // Calculator health check endpoint
+    if (url.pathname === '/mcp/calculator/health' && request.method === 'GET') {
+      return await handleCalculatorHealthCheck();
+    }
+
+    // ============================================================
+    // OAUTH ENDPOINTS (Public but secured by OAuth flow)
+    // ============================================================
+
+    // OAuth Authorization Endpoint
+    if (url.pathname === '/oauth/authorize') {
+      return await handleAuthorizeEndpoint(request, env);
+    }
+
+    // OAuth Token Endpoint
+    if (url.pathname === '/oauth/token') {
+      return await handleTokenEndpoint(request, env);
+    }
+
+    // OAuth User Info Endpoint
+    if (url.pathname === '/oauth/userinfo') {
+      return await handleUserInfoEndpoint(request, env);
+    }
+
+    // ============================================================
+    // WORKOS AUTHENTICATION ENDPOINTS (Public)
+    // ============================================================
+
+    // WorkOS Login endpoint - Redirect to WorkOS for authentication
+    if (url.pathname === '/auth/login' && request.method === 'GET') {
+      try {
+        const redirectUri = 'https://panel.wtyczki.ai/auth/callback';
+        const state = url.searchParams.get('return_to') || '/dashboard';
+
+        console.log(`🔐 [workos] Initiating login flow, return_to: ${state}`);
+
+        const authorizationUrl = await getAuthorizationUrl(env, redirectUri, state);
+
+        return Response.redirect(authorizationUrl, 302);
+      } catch (error) {
+        console.error('❌ [workos] Failed to generate authorization URL:', error);
+        return new Response('Authentication error', { status: 500 });
+      }
+    }
+
+    // WorkOS Callback endpoint - Handle redirect from WorkOS
+    if (url.pathname === '/auth/callback' && request.method === 'GET') {
+      try {
+        const code = url.searchParams.get('code');
+        const state = url.searchParams.get('state') || '/dashboard';
+
+        console.log(`🔄 [workos] Callback received, state: ${state}`);
+
+        if (!code) {
+          console.error('❌ [workos] Missing authorization code');
+          return new Response('Missing authorization code', { status: 400 });
+        }
+
+        // Exchange code for user session
+        const { user, sessionToken } = await handleCallback(code, env);
+
+        console.log(`✅ [workos] User authenticated: ${user.email}`);
+
+        // Set session cookie
+        const headers = new Headers();
+        headers.append('Location', state);
+        headers.append('Set-Cookie', `workos_session=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
+
+        return new Response(null, {
+          status: 302,
+          headers,
+        });
+      } catch (error) {
+        console.error('❌ [workos] Callback failed:', error);
+        return new Response('Authentication failed', { status: 500 });
+      }
+    }
+
+    // ============================================================
+    // AUTHENTICATION MIDDLEWARE FOR PROTECTED ROUTES
+    // ============================================================
+
+    // Routes that require WorkOS authentication
+    // NOTE: /checkout/success is intentionally PUBLIC to support guest checkout flow
+    // Guest users complete Stripe payment before authentication, so the success page
+    // must be accessible without JWT token. Security is provided by:
+    // - Stripe session_id validation (cryptographically secure)
+    // - Payment status verification via Stripe API
+    // - Idempotency protection (payment_intent_id uniqueness)
+    const protectedRoutes = [
+      '/dashboard',
+      '/auth/user',
+      '/user/transactions',
+    ];
+
+    let authenticatedUser: User | null = null;
+
+    // Check if current route requires authentication
+    const requiresAuth = protectedRoutes.some(route => url.pathname.startsWith(route));
+
+    if (requiresAuth) {
+      // Get session token from cookie
+      const sessionToken = getSessionTokenFromRequest(request);
+
+      if (!sessionToken) {
+        // No session - redirect to login
+        console.log(`❌ [workos] No session found, redirecting to login`);
+        const returnUrl = encodeURIComponent(url.pathname + url.search);
+        return Response.redirect(`https://panel.wtyczki.ai/auth/login?return_to=${returnUrl}`, 302);
+      }
+
+      // Validate session
+      const sessionResult = await validateSession(sessionToken, env);
+
+      if (!sessionResult.success || !sessionResult.user) {
+        // Invalid session - redirect to login
+        console.error(`❌ [workos] Session validation failed: ${sessionResult.error}`);
+        const returnUrl = encodeURIComponent(url.pathname + url.search);
+        return Response.redirect(`https://panel.wtyczki.ai/auth/login?return_to=${returnUrl}`, 302);
+      }
+
+      // Session valid - set authenticated user
+      authenticatedUser = sessionResult.user;
+      console.log(`✅ [workos] Authenticated user: ${authenticatedUser.email}`);
+    }
+
+    // ============================================================
+    // PROTECTED ENDPOINTS
+    // ============================================================
+
+    // Get current user info (API endpoint)
+    if (url.pathname === '/auth/user' && request.method === 'GET') {
+      return new Response(JSON.stringify({
+        user: {
+          user_id: authenticatedUser!.user_id,
+          email: authenticatedUser!.email,
+          current_token_balance: authenticatedUser!.current_token_balance,
+          total_tokens_purchased: authenticatedUser!.total_tokens_purchased,
+          stripe_customer_id: authenticatedUser!.stripe_customer_id,
+          created_at: authenticatedUser!.created_at,
+        }
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Get user transaction history (API endpoint)
+    if (url.pathname === '/user/transactions' && request.method === 'GET') {
+      try {
+        // Parse query parameters
+        const limit = parseInt(url.searchParams.get('limit') || '20');
+        const offset = parseInt(url.searchParams.get('offset') || '0');
+        const type = url.searchParams.get('type') || 'all';
+
+        console.log(`[API] Fetching transactions: user=${authenticatedUser!.user_id}, limit=${limit}, offset=${offset}, type=${type}`);
+
+        // Validate type parameter
+        if (type !== 'all' && type !== 'purchase' && type !== 'usage') {
+          return new Response(JSON.stringify({
+            error: 'Invalid type parameter. Must be: all, purchase, or usage'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Get transactions using dashboard function
+        const result = await getUserTransactions(
+          env.DB,
+          authenticatedUser!.user_id,
+          { limit, offset, type: type as 'all' | 'purchase' | 'usage' }
+        );
+
+        console.log(`[API] Returning ${result.transactions.length} transactions (${result.pagination.total} total)`);
+
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('[API] Error fetching transactions:', error);
+        return new Response(JSON.stringify({
+          error: 'Failed to fetch transaction history'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Dashboard page
+    if (url.pathname === '/dashboard' && request.method === 'GET') {
+      return new Response(renderDashboardPage(authenticatedUser!), {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' }
+      });
+    }
+
+    // Logout endpoint
+    if (url.pathname === '/auth/logout' && request.method === 'POST') {
+      const sessionToken = getSessionTokenFromRequest(request);
+
+      if (sessionToken) {
+        try {
+          const logoutUrl = await getLogoutUrl(sessionToken, env);
+
+          // Clear cookie and redirect to WorkOS logout
+          const headers = new Headers();
+          headers.append('Set-Cookie', 'workos_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+
+          return new Response(JSON.stringify({
+            success: true,
+            logoutUrl,
+            message: 'Logged out successfully'
+          }), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Set-Cookie': 'workos_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
+            }
+          });
+        } catch (error) {
+          console.error('❌ [workos] Logout failed:', error);
+        }
+      }
+
+      // No session or logout failed, just clear cookie
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Logged out successfully'
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': 'workos_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
+        }
+      });
+    }
+    // Checkout creation endpoint (requires authentication)
+    if (url.pathname === '/checkout/create' && request.method === 'POST') {
+      return await handleCheckoutCreate(request, env);
+    }
+
+    // Success page endpoint
+    if (url.pathname === '/checkout/success' && request.method === 'GET') {
+      return await handleCheckoutSuccess(request, env);
+    }
+
+    // Webhook endpoint
+    if (url.pathname === '/stripe/webhook' && request.method === 'POST') {
+      return await handleStripeWebhook(request, env);
+    }
+
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } // Close if (url.pathname === '/stripe/webhook')
+
+    // ============================================================
+    // ROOT PATH HANDLERS - Subdomain-aware routing
+    // ============================================================
+
+    // Handle root path based on subdomain
+    if (url.pathname === '/' || url.pathname === '') {
+      const hostname = request.headers.get('host') || '';
+
+      // Dashboard subdomain - serve public home page (guest checkout)
+      if (hostname.includes('panel.wtyczki.ai')) {
+        return new Response(renderPublicHomePage(), {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' }
+        });
+      }
+
+      // API subdomain - show API status page
+      if (hostname.includes('api.wtyczki.ai')) {
+        return new Response(JSON.stringify({
+          service: 'MCP Token System API',
+          status: 'operational',
+          version: '1.0.0',
+          endpoints: {
+            calculator: '/mcp/calculator',
+            health: '/mcp/calculator/health',
+            webhook: '/stripe/webhook',
+            checkout: '/checkout/create',
+            oauth: '/oauth/authorize'
+          },
+          documentation: 'https://wtyczki.ai/docs'
+        }), {
+          status: 200,
+    // Guest checkout endpoint (no authentication required)
+    if (url.pathname === '/checkout/create-guest' && request.method === 'POST') {
+      return await handleCheckoutCreateGuest(request, env);
+    }
+
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // ============================================================
+    // LEGAL PAGES
+    // ============================================================
+
+    // Privacy Policy
+    if (url.pathname === '/privacy') {
+      const html = await fetch('https://panel.wtyczki.ai/legal/privacy-policy.html')
+        .then(r => r.text())
+        .catch(() => `
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polityka Prywatności - wtyczki.ai</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 { color: #667eea; margin-bottom: 20px; }
+    .back-link {
+      display: inline-block;
+      margin-top: 30px;
+      padding: 12px 24px;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+    }
+    .back-link:hover { background: #764ba2; }
+    .info { color: #666; margin: 20px 0; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Polityka Prywatności</h1>
+    <p class="info">
+      Pełna Polityka Prywatności jest obecnie przygotowywana.<br><br>
+      W międzyczasie prosimy o kontakt: <a href="mailto:support@wtyczki.pl" style="color: #667eea;">support@wtyczki.pl</a>
+    </p>
+    <a href="https://panel.wtyczki.ai" class="back-link">← Wróć do panelu</a>
+  </div>
+</body>
+</html>
+        `);
+
+      return new Response(html, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
+
+    // Terms of Service
+    if (url.pathname === '/terms') {
+      const html = await fetch('https://panel.wtyczki.ai/legal/terms-of-service.html')
+        .then(r => r.text())
+        .catch(() => `
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Regulamin - wtyczki.ai</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 { color: #667eea; margin-bottom: 20px; }
+    .back-link {
+      display: inline-block;
+      margin-top: 30px;
+      padding: 12px 24px;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+    }
+    .back-link:hover { background: #764ba2; }
+    .info { color: #666; margin: 20px 0; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Regulamin Świadczenia Usług</h1>
+    <p class="info">
+      Pełny Regulamin jest obecnie przygotowywany.<br><br>
+      W międzyczasie prosimy o kontakt: <a href="mailto:support@wtyczki.pl" style="color: #667eea;">support@wtyczki.pl</a>
+    </p>
+    <a href="https://panel.wtyczki.ai" class="back-link">← Wróć do panelu</a>
+  </div>
+</body>
+</html>
+        `);
+
+      return new Response(html, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
+
+    // Default response for non-webhook routes
+    return new Response('Not found', { status: 404 });
+  } // Close async fetch()
+}; // Close export default
