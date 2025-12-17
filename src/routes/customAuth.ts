@@ -193,60 +193,60 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
  * OAuth 2.1: Validate CSRF token to prevent cross-site attacks
  */
 export async function handleVerifyMagicAuthCode(request: Request, env: Env): Promise<Response> {
+  // Parse form data FIRST (outside try-catch so variables are accessible in catch)
+  const formData = await request.formData();
+  const email = formData.get('email')?.toString().trim() || '';
+  const code = formData.get('code')?.toString().trim() || '';
+  const returnTo = formData.get('return_to')?.toString() || '/dashboard';
+  const csrfToken = formData.get('csrf_token')?.toString();
+
+  // OAuth 2.1: CSRF Protection
+  const cookieHeader = request.headers.get('Cookie');
+  const cookieCsrf = cookieHeader?.split(';')
+    .find(c => c.trim().startsWith('magic_auth_csrf='))
+    ?.split('=')[1];
+
+  if (!csrfToken || !cookieCsrf || csrfToken !== cookieCsrf) {
+    console.error('🔒 [magic-auth] CSRF validation failed in code verification');
+    const newCsrf = crypto.randomUUID();
+    return new Response(renderLoginCodeForm(
+      email,
+      'Nieprawidłowe żądanie. Odśwież stronę i spróbuj ponownie.',
+      returnTo,
+      newCsrf
+    ), {
+      status: 400,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+      }
+    });
+  }
+
+  if (!email || !code) {
+    const newCsrf = crypto.randomUUID();
+    return new Response(renderLoginCodeForm(email, 'Proszę podać kod weryfikacyjny', returnTo, newCsrf), {
+      status: 400,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+      }
+    });
+  }
+
+  // Validate code format (6 digits)
+  if (!/^\d{6}$/.test(code)) {
+    const newCsrf = crypto.randomUUID();
+    return new Response(renderLoginCodeForm(email, 'Kod musi składać się z 6 cyfr', returnTo, newCsrf), {
+      status: 400,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+      }
+    });
+  }
+
   try {
-    // Parse form data
-    const formData = await request.formData();
-    const email = formData.get('email')?.toString().trim();
-    const code = formData.get('code')?.toString().trim();
-    const returnTo = formData.get('return_to')?.toString() || '/dashboard';
-    const csrfToken = formData.get('csrf_token')?.toString();
-
-    // OAuth 2.1: CSRF Protection
-    const cookieHeader = request.headers.get('Cookie');
-    const cookieCsrf = cookieHeader?.split(';')
-      .find(c => c.trim().startsWith('magic_auth_csrf='))
-      ?.split('=')[1];
-
-    if (!csrfToken || !cookieCsrf || csrfToken !== cookieCsrf) {
-      console.error('🔒 [magic-auth] CSRF validation failed in code verification');
-      const newCsrf = crypto.randomUUID();
-      return new Response(renderLoginCodeForm(
-        email || '',
-        'Nieprawidłowe żądanie. Odśwież stronę i spróbuj ponownie.',
-        returnTo,
-        newCsrf
-      ), {
-        status: 400,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
-        }
-      });
-    }
-
-    if (!email || !code) {
-      const newCsrf = crypto.randomUUID();
-      return new Response(renderLoginCodeForm(email || '', 'Proszę podać kod weryfikacyjny', returnTo, newCsrf), {
-        status: 400,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
-        }
-      });
-    }
-
-    // Validate code format (6 digits)
-    if (!/^\d{6}$/.test(code)) {
-      const newCsrf = crypto.randomUUID();
-      return new Response(renderLoginCodeForm(email, 'Kod musi składać się z 6 cyfr', returnTo, newCsrf), {
-        status: 400,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
-        }
-      });
-    }
-
     console.log(`🔐 [custom-auth] Verifying code for: ${email}`);
 
     // Authenticate with WorkOS using Magic Auth code
@@ -332,17 +332,13 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
   } catch (error) {
     console.error('❌ [custom-auth] Error verifying code:', error);
 
-    const formData = await request.clone().formData();
-    const email = formData.get('email')?.toString() || '';
-    const returnTo = formData.get('return_to')?.toString() || '/dashboard';
-
-    // Check for specific WorkOS errors
+    // email and returnTo are accessible from outer scope (parsed before try block)
     let errorMessage = 'Nieprawidłowy lub wygasły kod. Spróbuj ponownie.';
 
     if (error instanceof Error) {
       if (error.message.includes('expired')) {
         errorMessage = 'Kod wygasł. Wróć i wyślij nowy kod.';
-      } else if (error.message.includes('invalid')) {
+      } else if (error.message.includes('invalid') || error.message.includes('Invalid')) {
         errorMessage = 'Nieprawidłowy kod. Sprawdź kod i spróbuj ponownie.';
       }
     }
