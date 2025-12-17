@@ -237,6 +237,7 @@ export function renderPublicHomePage(): string {
       <form id="loginForm" action="/auth/login-custom/send-code" method="POST" onsubmit="handleSubmit(event)">
         <input type="hidden" name="csrf_token" id="csrfToken" value="">
         <input type="hidden" name="return_to" value="/dashboard">
+        <input type="hidden" name="mode" value="register">
 
         <div class="form-group">
           <label for="email" class="form-label">Adres e-mail</label>

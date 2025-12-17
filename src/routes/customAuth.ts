@@ -37,6 +37,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
     const email = formData.get('email')?.toString().trim();
     const returnTo = formData.get('return_to')?.toString() || '/dashboard';
     const csrfToken = formData.get('csrf_token')?.toString();
+    const mode = formData.get('mode')?.toString() || 'login'; // 'login' or 'register'
 
     // OAuth 2.1: CSRF Protection
     const cookieHeader = request.headers.get('Cookie');
@@ -87,43 +88,63 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
     console.log(`🔐 [custom-auth] Email submitted: ${email}`);
 
     // Check if user exists in D1 database
-    const existingUser = await env.DB.prepare(`
+    let existingUser = await env.DB.prepare(`
       SELECT user_id, email FROM users WHERE email = ?
     `).bind(email).first();
 
-    // REGISTRATION PAGE: If user already exists, redirect them to login
-    if (existingUser) {
-      console.log(`ℹ️ [custom-auth] User already exists: ${existingUser.user_id}`);
-      const newCsrf = crypto.randomUUID();
-      return new Response(renderLoginEmailForm(
-        'Masz już konto! Zaloguj się na stronie: <a href="/dashboard" style="color: #7a0bc0; font-weight: 600;">panel.wtyczki.ai/dashboard</a>',
-        returnTo,
-        newCsrf
-      ), {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
-        }
-      });
+    // Handle based on mode (login vs register)
+    if (mode === 'register') {
+      // REGISTRATION MODE: Create new user, reject if exists
+      if (existingUser) {
+        console.log(`ℹ️ [custom-auth] Registration rejected - user exists: ${existingUser.user_id}`);
+        const newCsrf = crypto.randomUUID();
+        return new Response(renderLoginEmailForm(
+          'Masz już konto! Zaloguj się na stronie: <a href="/dashboard" style="color: #7a0bc0; font-weight: 600;">panel.wtyczki.ai/dashboard</a>',
+          returnTo,
+          newCsrf
+        ), {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+          }
+        });
+      }
+
+      // Create new user
+      console.log(`🆕 [custom-auth] New user registration: ${email}`);
+      const userId = crypto.randomUUID();
+      const timestamp = new Date().toISOString();
+
+      await env.DB.prepare(`
+        INSERT INTO users (user_id, email, created_at, last_login_at)
+        VALUES (?, ?, ?, ?)
+      `).bind(userId, email, timestamp, timestamp).run();
+
+      console.log(`✅ [custom-auth] New user created in D1: ${userId}`);
+      existingUser = { user_id: userId, email };
+
+    } else {
+      // LOGIN MODE: Send code to existing user, reject if not exists
+      if (!existingUser) {
+        console.log(`❌ [custom-auth] Login rejected - user not found: ${email}`);
+        const newCsrf = crypto.randomUUID();
+        return new Response(renderLoginEmailForm(
+          'Nie znaleziono konta. <a href="/" style="color: #7a0bc0; font-weight: 600;">Zarejestruj się tutaj</a>',
+          returnTo,
+          newCsrf
+        ), {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+          }
+        });
+      }
+      console.log(`✅ [custom-auth] Login - user found: ${existingUser.user_id}`);
     }
 
-    // NEW USER REGISTRATION: Create account in D1
-    console.log(`🆕 [custom-auth] New user registration: ${email}`);
-
-    const userId = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
-
-    await env.DB.prepare(`
-      INSERT INTO users (user_id, email, created_at, last_login_at)
-      VALUES (?, ?, ?, ?)
-    `).bind(userId, email, timestamp, timestamp).run();
-
-    console.log(`✅ [custom-auth] New user created in D1: ${userId}`);
-    console.log(`   Email: ${email}`);
-    console.log(`   User now has access to MCP servers`);
-
-    // Send Magic Auth code via WorkOS to verify email
+    // Send Magic Auth code via WorkOS
     const workos = new WorkOS(env.WORKOS_API_KEY);
 
     console.log(`🔄 [custom-auth] Sending Magic Auth code to: ${email}`);

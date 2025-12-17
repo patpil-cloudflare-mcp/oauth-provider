@@ -206,12 +206,13 @@ export function renderLoginEmailForm(
       ` : ''}
 
       <div class="info">
-        💡 Nie masz jeszcze konta? Użyj tego samego formularza, aby się zarejestrować.
+        💡 Nie masz jeszcze konta? <a href="/">Zarejestruj się tutaj</a>
       </div>
 
       <form method="POST" action="/auth/login-custom/send-code">
         <input type="hidden" name="csrf_token" value="${csrfToken}" />
         <input type="hidden" name="return_to" value="${returnTo}" />
+        <input type="hidden" name="mode" value="login" />
 
         <div class="form-group">
           <label for="email">Adres e-mail</label>
@@ -231,7 +232,7 @@ export function renderLoginEmailForm(
     </div>
 
     <div class="footer">
-      Pierwszy raz tutaj? Podaj email - konto zostanie utworzone automatycznie.
+      Pierwszy raz tutaj? <a href="/" style="color: #7a0bc0;">Zarejestruj się</a>
     </div>
   </div>
 </body>
