@@ -484,9 +484,7 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
       <div class="header-right">
         <span class="user-email">${user.email}</span>
         <a href="/dashboard/settings" class="header-link">⚙️ Ustawienia</a>
-        <form action="/auth/logout" method="POST" style="display: inline;">
-          <button type="submit" class="logout-btn">Wyloguj</button>
-        </form>
+        <button type="button" class="logout-btn" onclick="handleLogout()">Wyloguj</button>
       </div>
     </div>
 
@@ -693,6 +691,29 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
 
       } catch (error) {
         alert('Błąd: ' + error.message);
+      }
+    }
+
+    // Logout handler
+    async function handleLogout() {
+      try {
+        const response = await fetch('/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.logoutUrl) {
+          // Redirect to WorkOS logout URL
+          window.location.href = data.logoutUrl;
+        } else {
+          // Fallback: redirect to login page
+          window.location.href = '/auth/login-custom';
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = '/auth/login-custom';
       }
     }
 
