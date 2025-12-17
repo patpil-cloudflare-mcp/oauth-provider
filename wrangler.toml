@@ -11,15 +11,8 @@ binding = "ASSETS"
 # Custom Domains - Modern approach (replaces manual AAAA 100:: DNS records)
 # Cloudflare automatically creates and manages DNS records and certificates
 
-# Cloudflare Access Configuration
-# REQUIRED: Configure these after setting up Cloudflare Access in Zero Trust dashboard
-# ACCESS_TEAM_DOMAIN: Get from Zero Trust → Settings → Custom Pages (e.g., "https://yourteam.cloudflareaccess.com")
-# ACCESS_POLICY_AUD: Get from Zero Trust → Access → Applications → Your App → Application Audience (AUD) Tag
-[vars]
-ACCESS_TEAM_DOMAIN = "https://wtyczkiai.cloudflareaccess.com"
-ACCESS_POLICY_AUD = "e8769203aae02341bd6e811a27dbb8c7c256a35c7f6247524b2b4a35f42ee009"
-
 # OAuth 2.1 Configuration
+[vars]
 OAUTH_BASE_URL = "https://panel.wtyczki.ai"
 
 # Custom Domains (automatic DNS + certificate management)

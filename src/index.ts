@@ -52,10 +52,6 @@ export interface Env {
   WORKOS_API_KEY: string;
   WORKOS_CLIENT_ID: string;
 
-  // Cloudflare Access Configuration (deprecated - keeping for backward compatibility)
-  ACCESS_TEAM_DOMAIN: string;
-  ACCESS_POLICY_AUD: string;
-
   // OAuth 2.1 Configuration
   OAUTH_BASE_URL?: string;
 }
