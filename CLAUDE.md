@@ -147,10 +147,10 @@ Database migrations must be applied manually (not automated):
 
 ```bash
 # Apply to production
-npx wrangler d1 migrations apply mcp-tokens-database --remote
+npx wrangler d1 migrations apply mcp-oauth --remote
 
 # Apply to local development
-npx wrangler d1 migrations apply mcp-tokens-database --local
+npx wrangler d1 migrations apply mcp-oauth --local
 ```
 
 **Why manual migrations?**

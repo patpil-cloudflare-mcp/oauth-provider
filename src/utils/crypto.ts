@@ -83,15 +83,16 @@ export async function checkPreviousDeletion(
   email: string,
   db: D1Database
 ): Promise<{ deletionId: string; deletedAt: string } | null> {
-  const emailHash = await hashEmail(email);
+  // Normalize email for comparison
+  const normalizedEmail = email.toLowerCase().trim();
 
   const result = await db.prepare(`
     SELECT deletion_id as deletionId, deleted_at as deletedAt
     FROM account_deletions
-    WHERE email_hash = ?
+    WHERE LOWER(original_email) = ?
     ORDER BY deleted_at DESC
     LIMIT 1
-  `).bind(emailHash).first<{ deletionId: string; deletedAt: string }>();
+  `).bind(normalizedEmail).first<{ deletionId: string; deletedAt: string }>();
 
   return result || null;
 }
