@@ -170,10 +170,15 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
   } catch (error) {
     console.error('❌ [custom-auth] Error sending Magic Auth code:', error);
 
-    const returnTo = (await request.clone().formData()).get('return_to')?.toString() || '/dashboard';
+    // Show more specific error message for API key issues
+    let errorMessage = 'Wystąpił błąd. Spróbuj ponownie później.';
+    if (error instanceof Error && error.message.includes('authorize')) {
+      errorMessage = 'Błąd konfiguracji serwera. Skontaktuj się z administratorem.';
+    }
+
     const newCsrf = crypto.randomUUID();
 
-    return new Response(renderLoginEmailForm('Wystąpił błąd. Spróbuj ponownie później.', returnTo, newCsrf), {
+    return new Response(renderLoginEmailForm(errorMessage, '/dashboard', newCsrf), {
       status: 500,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
