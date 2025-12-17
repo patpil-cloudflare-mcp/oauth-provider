@@ -89,7 +89,7 @@ export async function handleCallback(
   console.log(`✅ [workos] Authenticated user: ${workosUser.email}`);
 
   // Get or create user in our database
-  const user = await getOrCreateUser(workosUser.email, env);
+  const { user } = await getOrCreateUser(workosUser.email, env);
 
   // Create session token
   const sessionToken = crypto.randomUUID();
