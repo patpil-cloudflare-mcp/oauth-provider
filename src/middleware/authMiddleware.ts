@@ -10,9 +10,7 @@ import {
 const PROTECTED_ROUTES = [
   '/dashboard',
   '/auth/user',
-  '/user/transactions',
   '/api/keys',           // API key management endpoints
-  '/account/delete',     // Account deletion endpoints
 ];
 
 /**

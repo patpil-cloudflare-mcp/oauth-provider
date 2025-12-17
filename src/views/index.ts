@@ -2,8 +2,6 @@
 // This file maintains backward compatibility by re-exporting all template functions
 
 // Auth templates
-export { renderAuthRequiredPage } from './templates/auth/authRequired';
-export { renderAuthErrorPage } from './templates/auth/authError';
 export { renderLogoutSuccessPage } from './templates/auth/logoutSuccess';
 export { renderLoginSuccessPage, type LoginSuccessData } from './templates/auth/loginSuccess';
 

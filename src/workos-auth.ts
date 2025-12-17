@@ -2,7 +2,6 @@
 
 import { WorkOS } from '@workos-inc/node';
 import { decodeJwt } from 'jose';
-import { getOrCreateUser } from './auth';
 import type { User } from './types';
 
 /**
@@ -277,4 +276,80 @@ async function getUserById(userId: string, db: D1Database): Promise<User | null>
   `).bind(userId).first();
 
   return result as User | null;
+}
+
+/**
+ * Helper: Get user by email from database
+ */
+async function getUserByEmail(email: string, db: D1Database): Promise<User | null> {
+  const result = await db.prepare(`
+    SELECT
+      user_id,
+      email,
+      created_at,
+      last_login_at
+    FROM users
+    WHERE email = ?
+  `).bind(email).first();
+
+  return result as User | null;
+}
+
+/**
+ * Get or create user in database
+ *
+ * @param email - User email address
+ * @param env - Worker environment with DB
+ * @returns User object and whether it was newly created
+ */
+export async function getOrCreateUser(
+  email: string,
+  env: { DB: D1Database }
+): Promise<{ user: User; isNewUser: boolean }> {
+  // Check if user exists
+  const existingUser = await getUserByEmail(email, env.DB);
+
+  if (existingUser) {
+    // Update last login timestamp
+    await env.DB.prepare(
+      'UPDATE users SET last_login_at = ? WHERE user_id = ?'
+    ).bind(new Date().toISOString(), existingUser.user_id).run();
+
+    console.log(`👤 [auth] Returning existing user: ${existingUser.user_id}`);
+    return { user: existingUser, isNewUser: false };
+  }
+
+  // Create new user
+  console.log(`🆕 [auth] Creating new user for email: ${email}`);
+
+  const userId = crypto.randomUUID();
+  const timestamp = new Date().toISOString();
+
+  // Insert user into database
+  await env.DB.prepare(`
+    INSERT INTO users (
+      user_id,
+      email,
+      created_at,
+      last_login_at
+    ) VALUES (?, ?, ?, ?)
+  `).bind(
+    userId,
+    email,
+    timestamp,
+    timestamp
+  ).run();
+
+  console.log(`✅ [auth] New user created: ${userId}`);
+  console.log(`   Email: ${email}`);
+
+  // Return newly created user with isNewUser flag
+  const newUser: User = {
+    user_id: userId,
+    email,
+    created_at: timestamp,
+    last_login_at: timestamp,
+  };
+
+  return { user: newUser, isNewUser: true };
 }

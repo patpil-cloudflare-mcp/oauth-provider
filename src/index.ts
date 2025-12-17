@@ -1,5 +1,4 @@
 // src/index.ts - Main Worker with Authentication & OAuth
-import { validateAccessToken } from './auth';
 import {
   handleAuthorizeEndpoint,
   handleTokenEndpoint,
@@ -14,12 +13,7 @@ import {
   getSessionTokenFromRequest,
 } from './workos-auth';
 import {
-  renderAuthRequiredPage,
-  renderAuthErrorPage,
-  renderSuccessPage,
-  renderErrorPage,
   renderDashboardPage,
-  renderPublicHomePage,
   renderLogoutSuccessPage,
 } from './views';
 import { authenticateRequest } from './middleware/authMiddleware';
