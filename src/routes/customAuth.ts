@@ -87,34 +87,43 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
     console.log(`🔐 [custom-auth] Email submitted: ${email}`);
 
     // Check if user exists in D1 database
-    let existingUser = await env.DB.prepare(`
+    const existingUser = await env.DB.prepare(`
       SELECT user_id, email FROM users WHERE email = ?
     `).bind(email).first();
 
-    // REGISTRATION FLOW: If user doesn't exist, create new account in D1
-    // This gives them access to MCP servers
-    if (!existingUser) {
-      console.log(`🆕 [custom-auth] New user registration: ${email}`);
-
-      // Create new user in Cloudflare D1 database
-      const userId = crypto.randomUUID();
-      const timestamp = new Date().toISOString();
-
-      await env.DB.prepare(`
-        INSERT INTO users (user_id, email, created_at, last_login_at)
-        VALUES (?, ?, ?, ?)
-      `).bind(userId, email, timestamp, timestamp).run();
-
-      console.log(`✅ [custom-auth] New user created in D1: ${userId}`);
-      console.log(`   Email: ${email}`);
-      console.log(`   User now has access to MCP servers`);
-
-      existingUser = { user_id: userId, email };
-    } else {
-      console.log(`✅ [custom-auth] Existing user logging in: ${existingUser.user_id}`);
+    // REGISTRATION PAGE: If user already exists, redirect them to login
+    if (existingUser) {
+      console.log(`ℹ️ [custom-auth] User already exists: ${existingUser.user_id}`);
+      const newCsrf = crypto.randomUUID();
+      return new Response(renderLoginEmailForm(
+        'Masz już konto! Zaloguj się na stronie: <a href="/dashboard" style="color: #7a0bc0; font-weight: 600;">panel.wtyczki.ai/dashboard</a>',
+        returnTo,
+        newCsrf
+      ), {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+        }
+      });
     }
 
-    // Send Magic Auth code via WorkOS (both new and existing users)
+    // NEW USER REGISTRATION: Create account in D1
+    console.log(`🆕 [custom-auth] New user registration: ${email}`);
+
+    const userId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+
+    await env.DB.prepare(`
+      INSERT INTO users (user_id, email, created_at, last_login_at)
+      VALUES (?, ?, ?, ?)
+    `).bind(userId, email, timestamp, timestamp).run();
+
+    console.log(`✅ [custom-auth] New user created in D1: ${userId}`);
+    console.log(`   Email: ${email}`);
+    console.log(`   User now has access to MCP servers`);
+
+    // Send Magic Auth code via WorkOS to verify email
     const workos = new WorkOS(env.WORKOS_API_KEY);
 
     console.log(`🔄 [custom-auth] Sending Magic Auth code to: ${email}`);
