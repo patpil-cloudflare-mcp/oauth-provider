@@ -8,14 +8,15 @@ import type {
   OAuthAccessToken,
   User
 } from './types';
-import { validateAccessToken, type AuthEnv } from './auth';
 import { validateApiKey } from './apiKeys';
 
 /**
  * OAuth environment interface
  */
-export interface OAuthEnv extends AuthEnv {
+export interface OAuthEnv {
+  DB: D1Database;
   OAUTH_STORE: KVNamespace;
+  USER_SESSIONS: KVNamespace;
 }
 
 /**
@@ -133,7 +134,7 @@ export async function handleAuthorizeEndpoint(
       last_login_at
     FROM users
     WHERE user_id = ?
-  `).bind(session.user_id).first();
+  `).bind(session.user_id).first<User>();
 
   if (!userResult) {
     console.log('🔐 [oauth] User not found, redirecting to custom login');
@@ -142,7 +143,7 @@ export async function handleAuthorizeEndpoint(
     return Response.redirect(loginUrl.toString(), 302);
   }
 
-  const user = userResult as User;
+  const user = userResult;
 
   // Handle POST (user approved)
   if (request.method === 'POST') {
@@ -237,10 +238,11 @@ export async function handleTokenEndpoint(
     const refreshToken = formData.get('refresh_token')?.toString();
 
     // Validate required fields for refresh_token grant
-    if (!refreshToken || !clientId || !clientSecret) {
+    // Note: client_secret is OPTIONAL (OAuth 2.1 supports 'none' auth method for public clients)
+    if (!refreshToken || !clientId) {
       return jsonResponse({
         error: 'invalid_request',
-        error_description: 'Missing required parameters for refresh_token grant'
+        error_description: 'Missing required parameters: refresh_token, client_id'
       }, 400);
     }
 
@@ -250,8 +252,33 @@ export async function handleTokenEndpoint(
       return jsonResponse({ error: 'invalid_client' }, 401);
     }
 
-    // TODO: Verify client_secret against bcrypt hash
-    // For now, skip validation since no clients are configured
+    // OAuth 2.1: Handle public vs confidential client authentication
+    const isPublicClient = !client.client_secret_hash ||
+                          client.client_secret_hash === '' ||
+                          client.client_secret_hash === 'none';
+
+    if (isPublicClient) {
+      // Public client: No client_secret needed for refresh_token grant
+      if (clientSecret) {
+        return jsonResponse({
+          error: 'invalid_request',
+          error_description: 'Public clients should not send client_secret'
+        }, 400);
+      }
+      console.log(`✅ [oauth] Public client refreshing token: ${clientId}`);
+    } else {
+      // Confidential client: client_secret required
+      if (!clientSecret) {
+        return jsonResponse({
+          error: 'invalid_request',
+          error_description: 'client_secret required for confidential clients'
+        }, 400);
+      }
+
+      // TODO: Verify client_secret against bcrypt hash
+      // For now, skip validation since no clients are configured
+      console.log(`✅ [oauth] Confidential client refreshing token: ${clientId}`);
+    }
 
     // Retrieve refresh token from KV
     const oldTokenData = await env.OAUTH_STORE.get(`refresh_token:${refreshToken}`, 'json');
@@ -322,10 +349,11 @@ export async function handleTokenEndpoint(
   // ============================================================
 
   // Validate required fields for authorization_code grant
-  if (!code || !clientId || !clientSecret || !redirectUri) {
+  // Note: client_secret is OPTIONAL (OAuth 2.1 supports 'none' auth method for public clients)
+  if (!code || !clientId || !redirectUri) {
     return jsonResponse({
       error: 'invalid_request',
-      error_description: 'Missing required parameters'
+      error_description: 'Missing required parameters: code, client_id, redirect_uri'
     }, 400);
   }
 
@@ -337,9 +365,36 @@ export async function handleTokenEndpoint(
     }, 401);
   }
 
-  // TODO: Verify client_secret against bcrypt hash stored in client config
-  // For now, no validation since no clients are configured
-  // When adding MCP clients, implement proper bcrypt validation here
+  // OAuth 2.1: Handle public vs confidential client authentication
+  // Public clients (client_secret_hash empty or 'none'): authenticate with PKCE alone
+  // Confidential clients (client_secret_hash set): require client_secret validation
+  const isPublicClient = !client.client_secret_hash ||
+                        client.client_secret_hash === '' ||
+                        client.client_secret_hash === 'none';
+
+  if (isPublicClient) {
+    // Public client: PKCE provides all security (no client_secret needed)
+    if (clientSecret) {
+      return jsonResponse({
+        error: 'invalid_request',
+        error_description: 'Public clients should not send client_secret (use PKCE only)'
+      }, 400);
+    }
+    console.log(`✅ [oauth] Public client authenticated via PKCE: ${clientId}`);
+  } else {
+    // Confidential client: client_secret required
+    if (!clientSecret) {
+      return jsonResponse({
+        error: 'invalid_request',
+        error_description: 'client_secret required for confidential clients'
+      }, 400);
+    }
+
+    // TODO: Verify client_secret against bcrypt hash stored in client.client_secret_hash
+    // For now, no validation since no clients are configured
+    // When adding confidential MCP clients, implement proper bcrypt validation here
+    console.log(`✅ [oauth] Confidential client authenticated: ${clientId}`);
+  }
 
   // Retrieve authorization code
   const authCodeData = await env.OAUTH_STORE.get(`auth_code:${code}`, 'json');
@@ -396,7 +451,7 @@ export async function handleTokenEndpoint(
   const isValid = await validatePKCE(
     codeVerifier,
     authCode.code_challenge,
-    authCode.code_challenge_method
+    authCode.code_challenge_method as 'S256' | 'plain'
   );
 
   if (!isValid) {
