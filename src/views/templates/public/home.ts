@@ -1,6 +1,6 @@
 // src/views/templates/public/home.ts - Public Home Page (Registration/Login)
 
-export function renderPublicHomePage(): string {
+export function renderPublicHomePage(csrfToken: string): string {
   return `
 <!DOCTYPE html>
 <html lang="pl">
@@ -235,7 +235,7 @@ export function renderPublicHomePage(): string {
       <div id="errorMessage" class="error-message"></div>
 
       <form id="loginForm" action="/auth/login-custom/send-code" method="POST" onsubmit="handleSubmit(event)">
-        <input type="hidden" name="csrf_token" id="csrfToken" value="">
+        <input type="hidden" name="csrf_token" id="csrfToken" value="${csrfToken}">
         <input type="hidden" name="return_to" value="/dashboard">
         <input type="hidden" name="mode" value="register">
 
@@ -276,14 +276,12 @@ export function renderPublicHomePage(): string {
   </div>
 
   <script>
-    // Generate CSRF token on page load
     document.addEventListener('DOMContentLoaded', function() {
-      // Generate a simple CSRF token (will be validated server-side)
-      const csrfToken = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
-      document.getElementById('csrfToken').value = csrfToken;
-
-      // Set CSRF cookie
-      document.cookie = 'magic_auth_csrf=' + csrfToken + '; path=/auth; secure; samesite=lax; max-age=600';
+      const csrfToken = document.getElementById('csrfToken').value;
+      if (!csrfToken) {
+        const fallback = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+        document.getElementById('csrfToken').value = fallback;
+      }
     });
 
     async function handleSubmit(event) {

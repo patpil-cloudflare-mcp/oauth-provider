@@ -18,9 +18,15 @@ export async function handleRootPath(request: Request): Promise<Response | null>
 
   // Dashboard subdomain - serve public home page (login/registration)
   if (hostname.includes('panel.wtyczki.ai')) {
-    return new Response(renderPublicHomePage(), {
+    const csrfToken = crypto.randomUUID();
+    const secureAttr = url.protocol === 'https:' ? '; Secure' : '';
+
+    return new Response(renderPublicHomePage(csrfToken), {
       status: 200,
-      headers: { 'Content-Type': 'text/html' }
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Set-Cookie': `magic_auth_csrf=${csrfToken}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`,
+      }
     });
   }
 

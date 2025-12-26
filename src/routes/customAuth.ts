@@ -14,6 +14,8 @@ export async function handleCustomLoginPage(request: Request): Promise<Response>
   const url = new URL(request.url);
   const returnTo = url.searchParams.get('return_to') || '/dashboard';
 
+  const secureAttr = url.protocol === 'https:' ? '; Secure' : '';
+
   // OAuth 2.1: Generate CSRF token
   const csrfToken = crypto.randomUUID();
 
@@ -21,7 +23,7 @@ export async function handleCustomLoginPage(request: Request): Promise<Response>
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Set-Cookie': `magic_auth_csrf=${csrfToken}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+      'Set-Cookie': `magic_auth_csrf=${csrfToken}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
     }
   });
 }
@@ -31,6 +33,8 @@ export async function handleCustomLoginPage(request: Request): Promise<Response>
  * OAuth 2.1: Validate CSRF token to prevent cross-site attacks
  */
 export async function handleSendMagicAuthCode(request: Request, env: Env): Promise<Response> {
+  const secureAttr = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
+
   try {
     // Parse form data
     const formData = await request.formData();
@@ -56,7 +60,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
         status: 400,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
         }
       });
     }
@@ -67,7 +71,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
         status: 400,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
         }
       });
     }
@@ -80,7 +84,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
         status: 400,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
         }
       });
     }
@@ -106,7 +110,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
           status: 200,
           headers: {
             'Content-Type': 'text/html; charset=utf-8',
-            'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+            'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
           }
         });
       }
@@ -137,7 +141,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
           status: 200,
           headers: {
             'Content-Type': 'text/html; charset=utf-8',
-            'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+            'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
           }
         });
       }
@@ -163,7 +167,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
       }
     });
 
@@ -182,7 +186,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       status: 500,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
       }
     });
   }
@@ -193,6 +197,8 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
  * OAuth 2.1: Validate CSRF token to prevent cross-site attacks
  */
 export async function handleVerifyMagicAuthCode(request: Request, env: Env): Promise<Response> {
+  const secureAttr = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
+
   // Parse form data FIRST (outside try-catch so variables are accessible in catch)
   const formData = await request.formData();
   const email = formData.get('email')?.toString().trim() || '';
@@ -218,7 +224,7 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
       status: 400,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
       }
     });
   }
@@ -229,7 +235,7 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
       status: 400,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
       }
     });
   }
@@ -241,7 +247,7 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
       status: 400,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
       }
     });
   }
