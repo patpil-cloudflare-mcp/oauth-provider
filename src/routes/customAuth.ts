@@ -284,12 +284,13 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
       });
     }
 
-    // Update last login timestamp
+    // Update last login timestamp and WorkOS user ID
     await env.DB.prepare(
-      'UPDATE users SET last_login_at = ? WHERE user_id = ?'
-    ).bind(new Date().toISOString(), dbUser.user_id).run();
+      'UPDATE users SET last_login_at = ?, workos_user_id = ? WHERE user_id = ?'
+    ).bind(new Date().toISOString(), workosUser.id, dbUser.user_id).run();
 
     console.log(`✅ [custom-auth] User loaded from database: ${dbUser.user_id}`);
+    console.log(`   WorkOS ID saved: ${workosUser.id}`);
 
     // Create session token
     const sessionToken = crypto.randomUUID();

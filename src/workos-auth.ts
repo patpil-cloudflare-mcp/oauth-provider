@@ -86,9 +86,10 @@ export async function handleCallback(
   });
 
   console.log(`✅ [workos] Authenticated user: ${workosUser.email}`);
+  console.log(`   WorkOS user ID: ${workosUser.id}`);
 
   // Get or create user in our database
-  const { user } = await getOrCreateUser(workosUser.email, env);
+  const { user } = await getOrCreateUser(workosUser.email, workosUser.id, env);
 
   // Create session token
   const sessionToken = crypto.randomUUID();
@@ -299,57 +300,59 @@ async function getUserByEmail(email: string, db: D1Database): Promise<User | nul
  * Get or create user in database
  *
  * @param email - User email address
+ * @param workosUserId - WorkOS user identifier
  * @param env - Worker environment with DB
  * @returns User object and whether it was newly created
  */
 export async function getOrCreateUser(
   email: string,
+  workosUserId: string,
   env: { DB: D1Database }
 ): Promise<{ user: User; isNewUser: boolean }> {
   // Check if user exists
   const existingUser = await getUserByEmail(email, env.DB);
 
-  if (existingUser) {
-    // Update last login timestamp
-    await env.DB.prepare(
-      'UPDATE users SET last_login_at = ? WHERE user_id = ?'
-    ).bind(new Date().toISOString(), existingUser.user_id).run();
-
-    console.log(`👤 [auth] Returning existing user: ${existingUser.user_id}`);
-    return { user: existingUser, isNewUser: false };
-  }
-
-  // Create new user
-  console.log(`🆕 [auth] Creating new user for email: ${email}`);
-
-  const userId = crypto.randomUUID();
+  const userId = existingUser?.user_id || crypto.randomUUID();
   const timestamp = new Date().toISOString();
+  const isNewUser = !existingUser;
 
-  // Insert user into database
+  // UPSERT: Insert new user or update existing user with WorkOS ID
+  // SQLite ON CONFLICT requires a UNIQUE constraint - email has one
   await env.DB.prepare(`
     INSERT INTO users (
       user_id,
       email,
       created_at,
-      last_login_at
-    ) VALUES (?, ?, ?, ?)
+      last_login_at,
+      workos_user_id
+    ) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(email) DO UPDATE SET
+      last_login_at = excluded.last_login_at,
+      workos_user_id = excluded.workos_user_id
   `).bind(
     userId,
     email,
     timestamp,
-    timestamp
+    timestamp,
+    workosUserId
   ).run();
 
-  console.log(`✅ [auth] New user created: ${userId}`);
-  console.log(`   Email: ${email}`);
+  if (isNewUser) {
+    console.log(`🆕 [auth] New user created: ${userId}`);
+    console.log(`   Email: ${email}`);
+    console.log(`   WorkOS ID: ${workosUserId}`);
+  } else {
+    console.log(`👤 [auth] Existing user updated: ${userId}`);
+    console.log(`   WorkOS ID saved: ${workosUserId}`);
+  }
 
-  // Return newly created user with isNewUser flag
-  const newUser: User = {
+  // Return user object
+  const user: User = {
     user_id: userId,
     email,
-    created_at: timestamp,
+    created_at: existingUser?.created_at || timestamp,
     last_login_at: timestamp,
   };
 
-  return { user: newUser, isNewUser: true };
+  return { user, isNewUser };
 }
