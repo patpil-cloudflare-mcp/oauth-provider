@@ -39,9 +39,9 @@ export async function handleTokenRevocation(
 
     // Try to revoke as access token first (or if hint suggests access_token)
     if (!tokenTypeHint || tokenTypeHint === 'access_token') {
-      const accessTokenData = await env.OAUTH_STORE.get(`access_token:${token}`, 'json');
+      const accessTokenData = await env.OAUTH_KV.get(`access_token:${token}`, 'json');
       if (accessTokenData) {
-        await env.OAUTH_STORE.delete(`access_token:${token}`);
+        await env.OAUTH_KV.delete(`access_token:${token}`);
         console.log('✅ [oauth] Access token revoked');
         return new Response('', { status: 200 });
       }
@@ -49,9 +49,9 @@ export async function handleTokenRevocation(
 
     // Try to revoke as refresh token (or if hint suggests refresh_token)
     if (!tokenTypeHint || tokenTypeHint === 'refresh_token') {
-      const refreshTokenData = await env.OAUTH_STORE.get(`refresh_token:${token}`, 'json');
+      const refreshTokenData = await env.OAUTH_KV.get(`refresh_token:${token}`, 'json');
       if (refreshTokenData) {
-        await env.OAUTH_STORE.delete(`refresh_token:${token}`);
+        await env.OAUTH_KV.delete(`refresh_token:${token}`);
         console.log('✅ [oauth] Refresh token revoked');
         return new Response('', { status: 200 });
       }

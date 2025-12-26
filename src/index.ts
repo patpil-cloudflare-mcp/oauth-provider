@@ -39,10 +39,10 @@ import type { User } from './types';
 
 export interface Env {
   // Database
-  DB: D1Database;
+  TOKEN_DB: D1Database;
 
   // KV Namespaces
-  OAUTH_STORE: KVNamespace;
+  OAUTH_KV: KVNamespace;
   USER_SESSIONS: KVNamespace;
 
   // Static Assets
@@ -263,7 +263,7 @@ export default {
     // Dashboard page
     if (url.pathname === '/dashboard' && request.method === 'GET') {
       // Fetch user's API keys
-      const apiKeysResult = await env.DB.prepare(`
+      const apiKeysResult = await env.TOKEN_DB.prepare(`
         SELECT api_key_id, name, key_prefix, created_at, last_used_at, is_active
         FROM api_keys
         WHERE user_id = ? AND is_active = 1

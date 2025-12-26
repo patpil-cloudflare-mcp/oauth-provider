@@ -8,7 +8,7 @@ import type { User } from './types';
  * Environment interface for WorkOS authentication
  */
 export interface WorkOSAuthEnv {
-  DB: D1Database;
+  TOKEN_DB: D1Database;
   USER_SESSIONS: KVNamespace;
   WORKOS_API_KEY: string;
   WORKOS_CLIENT_ID: string;
@@ -152,7 +152,7 @@ export async function validateSession(
     }
 
     // Load user from database
-    const user = await getUserById(session.user_id, env.DB);
+    const user = await getUserById(session.user_id, env.TOKEN_DB);
 
     if (!user) {
       console.log('❌ [workos] User not found in database');
@@ -307,10 +307,10 @@ async function getUserByEmail(email: string, db: D1Database): Promise<User | nul
 export async function getOrCreateUser(
   email: string,
   workosUserId: string,
-  env: { DB: D1Database }
+  env: { TOKEN_DB: D1Database }
 ): Promise<{ user: User; isNewUser: boolean }> {
   // Check if user exists
-  const existingUser = await getUserByEmail(email, env.DB);
+  const existingUser = await getUserByEmail(email, env.TOKEN_DB);
 
   const userId = existingUser?.user_id || crypto.randomUUID();
   const timestamp = new Date().toISOString();
@@ -318,7 +318,7 @@ export async function getOrCreateUser(
 
   // UPSERT: Insert new user or update existing user with WorkOS ID
   // SQLite ON CONFLICT requires a UNIQUE constraint - email has one
-  await env.DB.prepare(`
+  await env.TOKEN_DB.prepare(`
     INSERT INTO users (
       user_id,
       email,

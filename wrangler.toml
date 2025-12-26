@@ -25,12 +25,12 @@ pattern = "panel.wtyczki.ai"
 custom_domain = true
 
 [[d1_databases]]
-binding = "DB"
+binding = "TOKEN_DB"
 database_name = "mcp-oauth"
 database_id = "eac93639-d58e-4777-82e9-f1e28113d5b2"
 
 [[kv_namespaces]]
-binding = "OAUTH_STORE"
+binding = "OAUTH_KV"
 id = "ed207a9e99b2420cb3c65622c1b4d6f9"
 preview_id = "903645263ef443b79edf68b46061bb5d"
 

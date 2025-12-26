@@ -92,7 +92,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
     console.log(`🔐 [custom-auth] Email submitted: ${email}`);
 
     // Check if user exists in D1 database
-    let existingUser = await env.DB.prepare(`
+    let existingUser = await env.TOKEN_DB.prepare(`
       SELECT user_id, email FROM users WHERE email = ?
     `).bind(email).first();
 
@@ -120,7 +120,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       const userId = crypto.randomUUID();
       const timestamp = new Date().toISOString();
 
-      await env.DB.prepare(`
+      await env.TOKEN_DB.prepare(`
         INSERT INTO users (user_id, email, created_at, last_login_at)
         VALUES (?, ?, ?, ?)
       `).bind(userId, email, timestamp, timestamp).run();
@@ -268,7 +268,7 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
     console.log(`   WorkOS user ID: ${workosUser.id}`);
 
     // Load user from D1 database
-    const dbUser = await env.DB.prepare(`
+    const dbUser = await env.TOKEN_DB.prepare(`
       SELECT
         user_id,
         email,
@@ -291,7 +291,7 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
     }
 
     // Update last login timestamp and WorkOS user ID
-    await env.DB.prepare(
+    await env.TOKEN_DB.prepare(
       'UPDATE users SET last_login_at = ?, workos_user_id = ? WHERE user_id = ?'
     ).bind(new Date().toISOString(), workosUser.id, dbUser.user_id).run();
 

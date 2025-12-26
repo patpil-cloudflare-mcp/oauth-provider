@@ -14,8 +14,8 @@ import { validateApiKey } from './apiKeys';
  * OAuth environment interface
  */
 export interface OAuthEnv {
-  DB: D1Database;
-  OAUTH_STORE: KVNamespace;
+  TOKEN_DB: D1Database;
+  OAUTH_KV: KVNamespace;
   USER_SESSIONS: KVNamespace;
 }
 
@@ -126,7 +126,7 @@ export async function handleAuthorizeEndpoint(
   }
 
   // Load user from database
-  const userResult = await env.DB.prepare(`
+  const userResult = await env.TOKEN_DB.prepare(`
     SELECT
       user_id,
       email,
@@ -173,7 +173,7 @@ export async function handleAuthorizeEndpoint(
     };
 
     // Store authorization code in KV
-    await env.OAUTH_STORE.put(
+    await env.OAUTH_KV.put(
       `auth_code:${code}`,
       JSON.stringify(authCode),
       { expirationTtl: 600 } // 10 minutes
@@ -281,7 +281,7 @@ export async function handleTokenEndpoint(
     }
 
     // Retrieve refresh token from KV
-    const oldTokenData = await env.OAUTH_STORE.get(`refresh_token:${refreshToken}`, 'json');
+    const oldTokenData = await env.OAUTH_KV.get(`refresh_token:${refreshToken}`, 'json');
 
     if (!oldTokenData) {
       return jsonResponse({
@@ -317,21 +317,21 @@ export async function handleTokenEndpoint(
     };
 
     // Store new access token
-    await env.OAUTH_STORE.put(
+    await env.OAUTH_KV.put(
       `access_token:${newAccessToken}`,
       JSON.stringify(newTokenData),
       { expirationTtl: 1800 } // 30 minutes
     );
 
     // Store new refresh token
-    await env.OAUTH_STORE.put(
+    await env.OAUTH_KV.put(
       `refresh_token:${newRefreshToken}`,
       JSON.stringify(newTokenData),
       { expirationTtl: 30 * 24 * 3600 } // 30 days
     );
 
     // CRITICAL: Delete old refresh token to prevent reuse (security requirement)
-    await env.OAUTH_STORE.delete(`refresh_token:${refreshToken}`);
+    await env.OAUTH_KV.delete(`refresh_token:${refreshToken}`);
 
     console.log(`✅ [oauth] Refresh token rotated for user: ${oldToken.user_id}`);
 
@@ -397,7 +397,7 @@ export async function handleTokenEndpoint(
   }
 
   // Retrieve authorization code
-  const authCodeData = await env.OAUTH_STORE.get(`auth_code:${code}`, 'json');
+  const authCodeData = await env.OAUTH_KV.get(`auth_code:${code}`, 'json');
 
   if (!authCodeData) {
     return jsonResponse({
@@ -462,7 +462,7 @@ export async function handleTokenEndpoint(
   }
 
   // Delete authorization code (single use)
-  await env.OAUTH_STORE.delete(`auth_code:${code}`);
+  await env.OAUTH_KV.delete(`auth_code:${code}`);
 
   // Generate access token
   const accessToken = generateRandomString(64);
@@ -481,14 +481,14 @@ export async function handleTokenEndpoint(
   };
 
   // Store access token
-  await env.OAUTH_STORE.put(
+  await env.OAUTH_KV.put(
     `access_token:${accessToken}`,
     JSON.stringify(tokenData),
     { expirationTtl: 1800 } // 30 minutes
   );
 
   // Store refresh token (longer TTL)
-  await env.OAUTH_STORE.put(
+  await env.OAUTH_KV.put(
     `refresh_token:${refreshToken}`,
     JSON.stringify(tokenData),
     { expirationTtl: 30 * 24 * 3600 } // 30 days
@@ -541,7 +541,7 @@ export async function handleUserInfoEndpoint(
     }
   } else {
     // Try OAuth token validation
-    const tokenData = await env.OAUTH_STORE.get(`access_token:${token}`, 'json');
+    const tokenData = await env.OAUTH_KV.get(`access_token:${token}`, 'json');
 
     if (!tokenData) {
       return jsonResponse({
@@ -563,7 +563,7 @@ export async function handleUserInfoEndpoint(
 
   // Get user from database
   // SECURITY: Check is_deleted to prevent deleted users from accessing userinfo
-  const user = await env.DB.prepare(
+  const user = await env.TOKEN_DB.prepare(
     'SELECT user_id, email FROM users WHERE user_id = ? AND is_deleted = 0'
   ).bind(userId).first() as User | null;
 
@@ -587,7 +587,7 @@ export async function validateOAuthToken(
   token: string,
   env: OAuthEnv
 ): Promise<string | null> {
-  const tokenData = await env.OAUTH_STORE.get(`access_token:${token}`, 'json');
+  const tokenData = await env.OAUTH_KV.get(`access_token:${token}`, 'json');
 
   if (!tokenData) {
     return null;
@@ -596,7 +596,7 @@ export async function validateOAuthToken(
   const tokenObj = tokenData as OAuthAccessToken;
 
   if (tokenObj.expires_at < Date.now()) {
-    await env.OAUTH_STORE.delete(`access_token:${token}`);
+    await env.OAUTH_KV.delete(`access_token:${token}`);
     return null;
   }
 
@@ -604,13 +604,13 @@ export async function validateOAuthToken(
   // SECURITY FIX: Verify user is not deleted
   // ============================================================
   // Check database to ensure user account still exists and is not deleted
-  const user = await env.DB.prepare(
+  const user = await env.TOKEN_DB.prepare(
     'SELECT is_deleted FROM users WHERE user_id = ?'
   ).bind(tokenObj.user_id).first<{ is_deleted: number }>();
 
   if (!user || user.is_deleted === 1) {
     // User account deleted - revoke token immediately
-    await env.OAUTH_STORE.delete(`access_token:${token}`);
+    await env.OAUTH_KV.delete(`access_token:${token}`);
     return null;
   }
 
