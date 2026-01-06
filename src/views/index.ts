@@ -10,7 +10,7 @@ export { renderDashboardPage } from './templates/dashboard/dashboard';
 export { renderSettingsPage } from './templates/dashboard/settings';
 
 // Public templates
-export { renderPublicHomePage } from './templates/public/home';
+export { renderUnifiedAuthPage, type AuthTab } from './templates/public/unifiedAuth';
 
 // Shared components (available for direct import if needed)
 export * from './components/styles';

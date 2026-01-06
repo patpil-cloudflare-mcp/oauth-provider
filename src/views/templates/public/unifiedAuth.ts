@@ -1,13 +1,17 @@
-// src/views/templates/public/home.ts - Public Home Page (Registration/Login)
+// src/views/templates/public/unifiedAuth.ts - Unified Login/Registration Page with Tabs
 
-export function renderPublicHomePage(csrfToken: string): string {
+export type AuthTab = 'login' | 'register';
+
+export function renderUnifiedAuthPage(csrfToken: string, activeTab: AuthTab = 'login', error?: string): string {
+  const isLogin = activeTab === 'login';
+
   return `
 <!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel MCP | wtyczki.ai</title>
+  <title>${isLogin ? 'Zaloguj się' : 'Zarejestruj się'} | wtyczki.ai</title>
 
   <!-- SEO Meta Tags -->
   <meta name="description" content="Zarządzaj swoimi aplikacjami MCP i kluczami API. Bezpieczne uwierzytelnianie OAuth 2.1 dla serwerów Model Context Protocol.">
@@ -60,24 +64,60 @@ export function renderPublicHomePage(csrfToken: string): string {
     }
     .logo {
       text-align: center;
-      margin-bottom: 32px;
+      margin-bottom: 24px;
     }
     .logo img {
       height: 48px;
       width: auto;
     }
+
+    /* Tabs */
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 32px;
+      border-bottom: 2px solid #eff4f7;
+    }
+    .tab {
+      flex: 1;
+      padding: 14px 24px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      color: #6b7280;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .tab:hover {
+      color: #7a0bc0;
+    }
+    .tab.active {
+      color: #7a0bc0;
+    }
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(135deg, #7a0bc0 0%, #b2478f 100%);
+    }
+
     h1 {
       color: #222b4f;
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 700;
       text-align: center;
       margin-bottom: 12px;
     }
     .subtitle {
       color: rgba(34, 43, 79, 0.65);
-      font-size: 16px;
+      font-size: 15px;
       text-align: center;
-      margin-bottom: 32px;
+      margin-bottom: 28px;
       line-height: 1.5;
     }
     .form-group {
@@ -135,45 +175,18 @@ export function renderPublicHomePage(csrfToken: string): string {
       transform: none;
       box-shadow: none;
     }
-    .divider {
-      display: flex;
-      align-items: center;
-      margin: 24px 0;
-    }
-    .divider::before,
-    .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: #eff4f7;
-    }
-    .divider span {
-      padding: 0 16px;
-      color: rgba(34, 43, 79, 0.5);
-      font-size: 13px;
-    }
-    .info-box {
-      background: #f5f3ff;
-      border-radius: 10px;
-      padding: 16px;
-      text-align: center;
-    }
-    .info-box p {
-      color: rgba(34, 43, 79, 0.7);
+    .error-message {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 12px 16px;
+      border-radius: 8px;
       font-size: 14px;
-      line-height: 1.5;
+      margin-bottom: 16px;
+      display: none;
     }
-    .dashboard-link {
-      display: inline-block;
-      margin-top: 8px;
-      color: #7a0bc0;
-      text-decoration: none;
-      font-weight: 600;
-      transition: color 0.2s;
-    }
-    .dashboard-link:hover {
-      color: #b2478f;
-      text-decoration: underline;
+    .error-message.visible {
+      display: block;
     }
     .footer {
       text-align: center;
@@ -200,25 +213,13 @@ export function renderPublicHomePage(csrfToken: string): string {
       font-size: 12px;
       margin-top: 12px;
     }
-    .error-message {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #dc2626;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      margin-bottom: 16px;
-      display: none;
-    }
-    .error-message.visible {
-      display: block;
-    }
 
     @media (max-width: 480px) {
       body { padding: 16px; }
       .card { padding: 28px 20px; }
-      h1 { font-size: 24px; }
+      h1 { font-size: 22px; }
       .subtitle { font-size: 14px; }
+      .tab { padding: 12px 16px; font-size: 15px; }
     }
   </style>
 </head>
@@ -229,15 +230,22 @@ export function renderPublicHomePage(csrfToken: string): string {
         <img src="/wtyczkiai_logo_panel.png" alt="wtyczki.ai" />
       </div>
 
-      <h1>Zarejestruj się w wtyczki.ai</h1>
-      <p class="subtitle">Utwórz konto, aby zarządzać swoimi aplikacjami MCP i kluczami API</p>
+      <div class="auth-tabs">
+        <button type="button" class="tab${isLogin ? ' active' : ''}" data-tab="login">Logowanie</button>
+        <button type="button" class="tab${!isLogin ? ' active' : ''}" data-tab="register">Rejestracja</button>
+      </div>
 
-      <div id="errorMessage" class="error-message"></div>
+      <h1 id="heading">${isLogin ? 'Zaloguj się do wtyczki.ai' : 'Utwórz konto w wtyczki.ai'}</h1>
+      <p class="subtitle" id="subtitle">${isLogin
+        ? 'Wprowadź email, aby otrzymać kod weryfikacyjny'
+        : 'Zarejestruj się, aby zarządzać aplikacjami MCP i kluczami API'}</p>
 
-      <form id="loginForm" action="/auth/login-custom/send-code" method="POST" onsubmit="handleSubmit(event)">
+      <div id="errorMessage" class="error-message${error ? ' visible' : ''}">${error || ''}</div>
+
+      <form id="authForm" action="/auth/login-custom/send-code" method="POST" onsubmit="handleSubmit(event)">
         <input type="hidden" name="csrf_token" id="csrfToken" value="${csrfToken}">
         <input type="hidden" name="return_to" value="/dashboard">
-        <input type="hidden" name="mode" value="register">
+        <input type="hidden" name="mode" id="mode" value="${activeTab}">
 
         <div class="form-group">
           <label for="email" class="form-label">Adres e-mail</label>
@@ -249,20 +257,14 @@ export function renderPublicHomePage(csrfToken: string): string {
             placeholder="twoj@email.com"
             required
             autocomplete="email"
+            autofocus
           />
         </div>
 
         <button type="submit" id="submitButton" class="submit-button">
-          Zarejestruj się
+          ${isLogin ? 'Zaloguj się' : 'Zarejestruj się'}
         </button>
       </form>
-
-      <div class="divider"><span>lub</span></div>
-
-      <div class="info-box">
-        <p>Masz już konto?</p>
-        <a href="/dashboard" class="dashboard-link">Zaloguj się →</a>
-      </div>
     </div>
 
     <div class="footer">
@@ -276,6 +278,58 @@ export function renderPublicHomePage(csrfToken: string): string {
   </div>
 
   <script>
+    // Tab switching logic
+    const tabs = document.querySelectorAll('.tab');
+    const modeInput = document.getElementById('mode');
+    const submitBtn = document.getElementById('submitButton');
+    const heading = document.getElementById('heading');
+    const subtitle = document.getElementById('subtitle');
+    const errorMessage = document.getElementById('errorMessage');
+
+    const content = {
+      login: {
+        heading: 'Zaloguj się do wtyczki.ai',
+        subtitle: 'Wprowadź email, aby otrzymać kod weryfikacyjny',
+        button: 'Zaloguj się',
+        loading: 'Logowanie...'
+      },
+      register: {
+        heading: 'Utwórz konto w wtyczki.ai',
+        subtitle: 'Zarejestruj się, aby zarządzać aplikacjami MCP i kluczami API',
+        button: 'Zarejestruj się',
+        loading: 'Rejestracja...'
+      }
+    };
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Update active tab
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const mode = tab.dataset.tab;
+        const c = content[mode];
+
+        // Update form
+        modeInput.value = mode;
+        submitBtn.textContent = c.button;
+        heading.textContent = c.heading;
+        subtitle.textContent = c.subtitle;
+
+        // Clear error
+        errorMessage.classList.remove('visible');
+        errorMessage.textContent = '';
+
+        // Update URL without reload
+        const newUrl = mode === 'login' ? '/' : '/?tab=register';
+        history.replaceState(null, '', newUrl);
+
+        // Update page title
+        document.title = (mode === 'login' ? 'Zaloguj się' : 'Zarejestruj się') + ' | wtyczki.ai';
+      });
+    });
+
+    // CSRF token fallback
     document.addEventListener('DOMContentLoaded', function() {
       const csrfToken = document.getElementById('csrfToken').value;
       if (!csrfToken) {
@@ -284,13 +338,14 @@ export function renderPublicHomePage(csrfToken: string): string {
       }
     });
 
+    // Form submission
     async function handleSubmit(event) {
       event.preventDefault();
 
       const form = event.target;
-      const submitButton = document.getElementById('submitButton');
-      const errorMessage = document.getElementById('errorMessage');
       const email = document.getElementById('email').value.trim();
+      const mode = modeInput.value;
+      const c = content[mode];
 
       // Validate email
       if (!email) {
@@ -305,22 +360,20 @@ export function renderPublicHomePage(csrfToken: string): string {
       }
 
       // Disable button and show loading state
-      submitButton.disabled = true;
-      submitButton.textContent = 'Rejestracja...';
+      submitBtn.disabled = true;
+      submitBtn.textContent = c.loading;
       errorMessage.classList.remove('visible');
 
       try {
-        // Submit the form
         form.submit();
       } catch (error) {
         showError('Wystąpił błąd. Spróbuj ponownie.');
-        submitButton.disabled = false;
-        submitButton.textContent = 'Zarejestruj się';
+        submitBtn.disabled = false;
+        submitBtn.textContent = c.button;
       }
     }
 
     function showError(message) {
-      const errorMessage = document.getElementById('errorMessage');
       errorMessage.textContent = message;
       errorMessage.classList.add('visible');
     }
@@ -328,9 +381,9 @@ export function renderPublicHomePage(csrfToken: string): string {
     // Reset button state when page is restored from cache
     window.addEventListener('pageshow', function(event) {
       if (event.persisted) {
-        const submitButton = document.getElementById('submitButton');
-        submitButton.disabled = false;
-        submitButton.textContent = 'Zarejestruj się';
+        const mode = modeInput.value;
+        submitBtn.disabled = false;
+        submitBtn.textContent = content[mode].button;
       }
     });
   </script>

@@ -1,9 +1,9 @@
 // src/routes/staticPages.ts - Static Page Handlers
-import { renderPublicHomePage } from '../views';
+import { renderUnifiedAuthPage, type AuthTab } from '../views';
 
 /**
  * Handle root path (/) with subdomain-aware routing
- * - panel.wtyczki.ai: Serve public home page (login/registration)
+ * - panel.wtyczki.ai: Serve unified auth page (login/registration tabs)
  * - api.wtyczki.ai: Show API status page
  */
 export async function handleRootPath(request: Request): Promise<Response | null> {
@@ -16,12 +16,19 @@ export async function handleRootPath(request: Request): Promise<Response | null>
 
   const hostname = request.headers.get('host') || '';
 
-  // Dashboard subdomain - serve public home page (login/registration)
+  // Dashboard subdomain - serve unified auth page with tabs
   if (hostname.includes('panel.wtyczki.ai')) {
     const csrfToken = crypto.randomUUID();
     const secureAttr = url.protocol === 'https:' ? '; Secure' : '';
 
-    return new Response(renderPublicHomePage(csrfToken), {
+    // Determine active tab from URL param (default: login)
+    const tabParam = url.searchParams.get('tab');
+    const activeTab: AuthTab = tabParam === 'register' ? 'register' : 'login';
+
+    // Get error message from URL param (if any)
+    const errorParam = url.searchParams.get('error');
+
+    return new Response(renderUnifiedAuthPage(csrfToken, activeTab, errorParam || undefined), {
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',

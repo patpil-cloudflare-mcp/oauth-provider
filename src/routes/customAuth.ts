@@ -2,31 +2,8 @@
 
 import { WorkOS } from '@workos-inc/node';
 import type { Env } from '../index';
-import { renderLoginEmailForm, renderLoginCodeForm } from '../views/customLoginPage';
+import { renderLoginCodeForm } from '../views/customLoginPage';
 import { renderLoginSuccessPage } from '../views';
-
-/**
- * Show email input form (Step 1)
- * OAuth 2.1: Generate CSRF token for protection against cross-site attacks
- */
-export async function handleCustomLoginPage(request: Request): Promise<Response> {
-  // Get return_to parameter from query string (for OAuth redirect after login)
-  const url = new URL(request.url);
-  const returnTo = url.searchParams.get('return_to') || '/dashboard';
-
-  const secureAttr = url.protocol === 'https:' ? '; Secure' : '';
-
-  // OAuth 2.1: Generate CSRF token
-  const csrfToken = crypto.randomUUID();
-
-  return new Response(renderLoginEmailForm(undefined, returnTo, csrfToken), {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Set-Cookie': `magic_auth_csrf=${csrfToken}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
-    }
-  });
-}
 
 /**
  * Handle email submission - Check if user exists, then send Magic Auth code (Step 2)
@@ -51,42 +28,26 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
 
     if (!csrfToken || !cookieCsrf || csrfToken !== cookieCsrf) {
       console.error('🔒 [magic-auth] CSRF validation failed');
-      const newCsrf = crypto.randomUUID();
-      return new Response(renderLoginEmailForm(
-        'Nieprawidłowe żądanie. Odśwież stronę i spróbuj ponownie.',
-        returnTo,
-        newCsrf
-      ), {
-        status: 400,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
-        }
-      });
+      const baseUrl = new URL(request.url).origin;
+      const tab = mode === 'register' ? 'register' : 'login';
+      const errorMsg = encodeURIComponent('Nieprawidłowe żądanie. Odśwież stronę i spróbuj ponownie.');
+      return Response.redirect(`${baseUrl}/?tab=${tab}&error=${errorMsg}`, 303);
     }
 
     if (!email) {
-      const newCsrf = crypto.randomUUID();
-      return new Response(renderLoginEmailForm('Proszę podać adres e-mail', returnTo, newCsrf), {
-        status: 400,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
-        }
-      });
+      const baseUrl = new URL(request.url).origin;
+      const tab = mode === 'register' ? 'register' : 'login';
+      const errorMsg = encodeURIComponent('Proszę podać adres e-mail.');
+      return Response.redirect(`${baseUrl}/?tab=${tab}&error=${errorMsg}`, 303);
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      const newCsrf = crypto.randomUUID();
-      return new Response(renderLoginEmailForm('Nieprawidłowy format adresu e-mail', returnTo, newCsrf), {
-        status: 400,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
-        }
-      });
+      const baseUrl = new URL(request.url).origin;
+      const tab = mode === 'register' ? 'register' : 'login';
+      const errorMsg = encodeURIComponent('Nieprawidłowy format adresu e-mail.');
+      return Response.redirect(`${baseUrl}/?tab=${tab}&error=${errorMsg}`, 303);
     }
 
     console.log(`🔐 [custom-auth] Email submitted: ${email}`);
@@ -101,18 +62,9 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       // REGISTRATION MODE: Create new user, reject if exists
       if (existingUser) {
         console.log(`ℹ️ [custom-auth] Registration rejected - user exists: ${existingUser.user_id}`);
-        const newCsrf = crypto.randomUUID();
-        return new Response(renderLoginEmailForm(
-          'Masz już konto! Zaloguj się na stronie: <a href="/dashboard" style="color: #7a0bc0; font-weight: 600;">panel.wtyczki.ai/dashboard</a>',
-          returnTo,
-          newCsrf
-        ), {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
-          }
-        });
+        const baseUrl = new URL(request.url).origin;
+        const errorMsg = encodeURIComponent('Konto z tym adresem email już istnieje. Przejdź do zakładki Logowanie.');
+        return Response.redirect(`${baseUrl}/?tab=register&error=${errorMsg}`, 303);
       }
 
       // Create new user
@@ -132,18 +84,9 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       // LOGIN MODE: Send code to existing user, reject if not exists
       if (!existingUser) {
         console.log(`❌ [custom-auth] Login rejected - user not found: ${email}`);
-        const newCsrf = crypto.randomUUID();
-        return new Response(renderLoginEmailForm(
-          'Nie znaleziono konta. <a href="/" style="color: #7a0bc0; font-weight: 600;">Zarejestruj się tutaj</a>',
-          returnTo,
-          newCsrf
-        ), {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
-          }
-        });
+        const baseUrl = new URL(request.url).origin;
+        const errorMsg = encodeURIComponent('Nie znaleziono konta z tym adresem email. Przejdź do zakładki Rejestracja.');
+        return Response.redirect(`${baseUrl}/?tab=login&error=${errorMsg}`, 303);
       }
       console.log(`✅ [custom-auth] Login - user found: ${existingUser.user_id}`);
     }
@@ -180,15 +123,9 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       errorMessage = 'Błąd konfiguracji serwera. Skontaktuj się z administratorem.';
     }
 
-    const newCsrf = crypto.randomUUID();
-
-    return new Response(renderLoginEmailForm(errorMessage, '/dashboard', newCsrf), {
-      status: 500,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
-      }
-    });
+    const baseUrl = new URL(request.url).origin;
+    const errorMsg = encodeURIComponent(errorMessage);
+    return Response.redirect(`${baseUrl}/?error=${errorMsg}`, 303);
   }
 }
 

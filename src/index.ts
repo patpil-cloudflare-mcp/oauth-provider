@@ -23,7 +23,6 @@ import {
   handleTermsOfService,
 } from './routes/staticPages';
 import {
-  handleCustomLoginPage,
   handleSendMagicAuthCode,
   handleVerifyMagicAuthCode,
 } from './routes/customAuth';
@@ -140,16 +139,11 @@ export default {
     // WORKOS AUTHENTICATION ENDPOINTS (Public)
     // ============================================================
 
-    // WorkOS Login endpoint - Redirect to custom Magic Auth login
+    // WorkOS Login endpoint - Redirect to unified auth page
     if (url.pathname === '/auth/login' && request.method === 'GET') {
-      console.log('🔐 Redirecting to custom Magic Auth login');
-      // Preserve return_to query parameter (Response.redirect requires absolute URL)
-      const returnTo = url.searchParams.get('return_to');
+      console.log('🔐 Redirecting to unified auth page');
       const baseUrl = url.origin;
-      const redirectUrl = returnTo
-        ? `${baseUrl}/auth/login-custom?return_to=${encodeURIComponent(returnTo)}`
-        : `${baseUrl}/auth/login-custom`;
-      return Response.redirect(redirectUrl, 302);
+      return Response.redirect(`${baseUrl}/?tab=login`, 301);
     }
 
     // WorkOS Callback endpoint - Handle redirect from WorkOS
@@ -201,9 +195,10 @@ export default {
     // CUSTOM MAGIC AUTH LOGIN (Public - Better UX)
     // ============================================================
 
-    // Custom login page - Step 1: Email input
+    // Redirect old login page to unified auth page
     if (url.pathname === '/auth/login-custom' && request.method === 'GET') {
-      return await handleCustomLoginPage(request);
+      const baseUrl = url.origin;
+      return Response.redirect(`${baseUrl}/?tab=login`, 301);
     }
 
     // Custom login - Step 2: Send Magic Auth code
