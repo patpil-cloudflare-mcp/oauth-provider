@@ -20,12 +20,92 @@ export interface OAuthEnv {
 }
 
 /**
- * Pre-configured OAuth clients (MCP servers)
- * In production, these would be stored in KV or D1
+ * OAuth client as stored in D1 database
  */
-const OAUTH_CLIENTS: Record<string, OAuthClient> = {
-  // Add MCP server clients here as needed
-};
+interface OAuthClientRow {
+  client_id: string;
+  client_secret_hash: string | null;
+  name: string;
+  description: string | null;
+  icon_url: string | null;
+  redirect_uris: string; // JSON array
+  scopes: string; // JSON array
+  client_type: string;
+  created_at: string;
+  is_active: number;
+}
+
+/**
+ * Get OAuth client from D1 database
+ * Returns null if client not found or inactive
+ */
+async function getOAuthClient(
+  clientId: string,
+  env: OAuthEnv
+): Promise<OAuthClient | null> {
+  const row = await env.TOKEN_DB.prepare(`
+    SELECT client_id, client_secret_hash, name, description, icon_url,
+           redirect_uris, scopes, client_type, created_at, is_active
+    FROM oauth_clients
+    WHERE client_id = ? AND is_active = 1
+  `).bind(clientId).first<OAuthClientRow>();
+
+  if (!row) {
+    return null;
+  }
+
+  // Parse JSON fields
+  const redirectUris: string[] = JSON.parse(row.redirect_uris);
+  const scopes: string[] = JSON.parse(row.scopes);
+
+  return {
+    client_id: row.client_id,
+    client_secret_hash: row.client_secret_hash || '',
+    name: row.name,
+    redirect_uris: redirectUris,
+    scopes: scopes,
+    created_at: row.created_at,
+  };
+}
+
+/**
+ * Record or update user authorization for an OAuth client
+ */
+async function recordAuthorization(
+  userId: string,
+  clientId: string,
+  scopes: string[],
+  env: OAuthEnv
+): Promise<void> {
+  const authorizationId = crypto.randomUUID();
+  const scopesJson = JSON.stringify(scopes);
+
+  // UPSERT: Insert new authorization or update existing one
+  await env.TOKEN_DB.prepare(`
+    INSERT INTO oauth_authorizations (authorization_id, user_id, client_id, scopes, authorized_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+    ON CONFLICT (user_id, client_id) DO UPDATE SET
+      scopes = excluded.scopes,
+      authorized_at = datetime('now')
+  `).bind(authorizationId, userId, clientId, scopesJson).run();
+
+  console.log(`✅ [oauth] Authorization recorded for user ${userId} -> client ${clientId}`);
+}
+
+/**
+ * Update last_used_at timestamp for an authorization
+ */
+async function updateAuthorizationLastUsed(
+  userId: string,
+  clientId: string,
+  env: OAuthEnv
+): Promise<void> {
+  await env.TOKEN_DB.prepare(`
+    UPDATE oauth_authorizations
+    SET last_used_at = datetime('now')
+    WHERE user_id = ? AND client_id = ?
+  `).bind(userId, clientId).run();
+}
 
 /**
  * Handles OAuth authorization endpoint
@@ -58,8 +138,8 @@ export async function handleAuthorizeEndpoint(
     return new Response('Invalid OAuth request', { status: 400 });
   }
 
-  // Validate client
-  const client = OAUTH_CLIENTS[clientId];
+  // Validate client (load from D1)
+  const client = await getOAuthClient(clientId, env);
   if (!client) {
     return new Response('Unknown client', { status: 400 });
   }
@@ -179,6 +259,14 @@ export async function handleAuthorizeEndpoint(
       { expirationTtl: 600 } // 10 minutes
     );
 
+    // Record user authorization in D1 (for dashboard display)
+    await recordAuthorization(
+      user.user_id,
+      clientId,
+      scope.split(' ').filter(s => s.length > 0),
+      env
+    );
+
     console.log(`✅ [oauth] Authorization code generated for user: ${user.user_id}`);
 
     // Redirect back with code
@@ -246,8 +334,8 @@ export async function handleTokenEndpoint(
       }, 400);
     }
 
-    // Validate client
-    const client = OAUTH_CLIENTS[clientId];
+    // Validate client (load from D1)
+    const client = await getOAuthClient(clientId, env);
     if (!client) {
       return jsonResponse({ error: 'invalid_client' }, 401);
     }
@@ -333,6 +421,9 @@ export async function handleTokenEndpoint(
     // CRITICAL: Delete old refresh token to prevent reuse (security requirement)
     await env.OAUTH_KV.delete(`refresh_token:${refreshToken}`);
 
+    // Update last_used_at in authorization record
+    await updateAuthorizationLastUsed(oldToken.user_id, oldToken.client_id, env);
+
     console.log(`✅ [oauth] Refresh token rotated for user: ${oldToken.user_id}`);
 
     return jsonResponse({
@@ -357,8 +448,8 @@ export async function handleTokenEndpoint(
     }, 400);
   }
 
-  // Validate client credentials
-  const client = OAUTH_CLIENTS[clientId];
+  // Validate client credentials (load from D1)
+  const client = await getOAuthClient(clientId, env);
   if (!client) {
     return jsonResponse({
       error: 'invalid_client'

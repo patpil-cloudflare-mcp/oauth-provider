@@ -34,6 +34,10 @@ import {
   handleListApiKeys,
   handleRevokeApiKey,
 } from './routes/apiKeySettings';
+import {
+  handleListOAuthGrants,
+  handleRevokeOAuthGrant,
+} from './routes/oauthGrants';
 import type { User } from './types';
 
 export interface Env {
@@ -302,6 +306,23 @@ export default {
       const apiKeyId = url.pathname.split('/').pop();
       if (apiKeyId) {
         return await handleRevokeApiKey(request, env, authenticatedUser!, apiKeyId);
+      }
+    }
+
+    // ============================================================
+    // OAUTH GRANTS MANAGEMENT ENDPOINTS
+    // ============================================================
+
+    // List user's authorized OAuth applications
+    if (url.pathname === '/api/oauth/grants' && request.method === 'GET') {
+      return await handleListOAuthGrants(request, env, authenticatedUser!);
+    }
+
+    // Revoke OAuth authorization
+    if (url.pathname.startsWith('/api/oauth/grants/') && request.method === 'DELETE') {
+      const authorizationId = url.pathname.split('/').pop();
+      if (authorizationId) {
+        return await handleRevokeOAuthGrant(request, env, authenticatedUser!, authorizationId);
       }
     }
 

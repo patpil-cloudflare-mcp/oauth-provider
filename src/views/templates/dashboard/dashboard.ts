@@ -328,6 +328,47 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
       font-size: 13px;
       color: rgba(34, 43, 79, 0.65);
     }
+    .app-details {
+      flex: 1;
+    }
+    .app-scopes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .scope-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: #e0e7ff;
+      color: #4338ca;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .app-actions {
+      display: flex;
+      align-items: center;
+    }
+    .apps-loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: rgba(34, 43, 79, 0.65);
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #e5e7eb;
+      border-top-color: #7a0bc0;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
     /* Modal */
     .modal-overlay {
@@ -548,11 +589,10 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
           Autoryzowane aplikacje MCP
         </h2>
       </div>
-      <div class="apps-list">
-        <div class="empty-state">
-          <div class="empty-icon">📱</div>
-          <p>Nie autoryzowałeś jeszcze żadnych aplikacji MCP</p>
-          <p class="empty-hint">Aplikacje pojawią się tutaj po autoryzacji przez OAuth 2.1</p>
+      <div id="authorizedApps" class="apps-list">
+        <div class="apps-loading">
+          <span class="loading-spinner"></span>
+          Ładowanie aplikacji...
         </div>
       </div>
     </div>
@@ -733,6 +773,122 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
         }
       });
     });
+
+    // ============================================================
+    // Authorized OAuth Apps
+    // ============================================================
+
+    const scopeLabels = {
+      'mcp_access': 'Dostęp MCP',
+      'user_info': 'Informacje o koncie',
+      'openid': 'OpenID',
+      'profile': 'Profil',
+      'email': 'Email',
+      'offline_access': 'Dostęp offline'
+    };
+
+    function formatScopeLabel(scope) {
+      return scopeLabels[scope] || scope;
+    }
+
+    function formatDateTime(dateStr) {
+      if (!dateStr) return 'Nigdy';
+      return new Date(dateStr).toLocaleDateString('pl-PL', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function renderAuthorizedApps(grants) {
+      const container = document.getElementById('authorizedApps');
+
+      if (!grants || grants.length === 0) {
+        container.innerHTML = \`
+          <div class="empty-state">
+            <div class="empty-icon">📱</div>
+            <p>Nie autoryzowałeś jeszcze żadnych aplikacji MCP</p>
+            <p class="empty-hint">Aplikacje pojawią się tutaj po autoryzacji przez OAuth 2.1</p>
+          </div>
+        \`;
+        return;
+      }
+
+      container.innerHTML = grants.map(grant => \`
+        <div class="app-item" data-id="\${grant.authorization_id}">
+          <div class="app-info">
+            <div class="app-icon">
+              \${grant.client_icon_url
+                ? \`<img src="\${grant.client_icon_url}" alt="" style="width: 24px; height: 24px;">\`
+                : '🔌'}
+            </div>
+            <div class="app-details">
+              <div class="app-name">\${grant.client_name}</div>
+              <div class="app-meta">
+                Autoryzowano: \${formatDateTime(grant.authorized_at)}
+                \${grant.last_used_at ? \` • Ostatnio używane: \${formatDateTime(grant.last_used_at)}\` : ''}
+              </div>
+              <div class="app-scopes">
+                \${grant.scopes.map(scope => \`<span class="scope-badge">\${formatScopeLabel(scope)}</span>\`).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="app-actions">
+            <button class="action-btn action-btn-danger" onclick="revokeOAuthGrant('\${grant.authorization_id}', '\${grant.client_name}')">
+              Cofnij dostęp
+            </button>
+          </div>
+        </div>
+      \`).join('');
+    }
+
+    async function loadAuthorizedApps() {
+      try {
+        const response = await fetch('/api/oauth/grants');
+        if (!response.ok) {
+          throw new Error('Failed to load authorized apps');
+        }
+        const data = await response.json();
+        renderAuthorizedApps(data.grants);
+      } catch (error) {
+        console.error('Error loading authorized apps:', error);
+        document.getElementById('authorizedApps').innerHTML = \`
+          <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <p>Nie udało się załadować aplikacji</p>
+            <p class="empty-hint">\${error.message}</p>
+          </div>
+        \`;
+      }
+    }
+
+    async function revokeOAuthGrant(authorizationId, clientName) {
+      if (!confirm(\`Czy na pewno chcesz cofnąć dostęp dla aplikacji "\${clientName}"? Aplikacja straci dostęp do Twojego konta.\`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/oauth/grants/' + authorizationId, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Nie udało się cofnąć dostępu');
+        }
+
+        // Reload the list
+        loadAuthorizedApps();
+
+      } catch (error) {
+        alert('Błąd: ' + error.message);
+      }
+    }
+
+    // Load authorized apps on page load
+    document.addEventListener('DOMContentLoaded', loadAuthorizedApps);
   </script>
 </body>
 </html>
