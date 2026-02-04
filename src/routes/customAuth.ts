@@ -256,9 +256,24 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
     );
 
     console.log(`🎫 [custom-auth] Session created: ${sessionToken.substring(0, 8)}...`);
-    console.log(`🔄 [custom-auth] Showing success page, then redirecting to: ${returnTo}`);
 
-    // Show success page with session cookie (auto-redirects after 2.5 seconds)
+    // For OAuth flows, redirect immediately without showing success page
+    // (the OAuth consent page will appear next)
+    const isOAuthFlow = returnTo.startsWith('/oauth/authorize');
+
+    if (isOAuthFlow) {
+      console.log(`🔄 [custom-auth] OAuth flow detected, redirecting immediately to: ${returnTo}`);
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': returnTo,
+          'Set-Cookie': `workos_session=${sessionToken}; Domain=.wtyczki.ai; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=259200`,
+        },
+      });
+    }
+
+    // For regular logins, show success page with auto-redirect after 2.5 seconds
+    console.log(`🔄 [custom-auth] Showing success page, then redirecting to: ${returnTo}`);
     const successHtml = renderLoginSuccessPage({
       email: dbUser.email as string,
       redirectUrl: returnTo,
