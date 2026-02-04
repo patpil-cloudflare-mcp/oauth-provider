@@ -195,10 +195,15 @@ export default {
     // CUSTOM MAGIC AUTH LOGIN (Public - Better UX)
     // ============================================================
 
-    // Redirect old login page to unified auth page
+    // Redirect old login page to unified auth page (preserve return_to for OAuth flow)
     if (url.pathname === '/auth/login-custom' && request.method === 'GET') {
       const baseUrl = url.origin;
-      return Response.redirect(`${baseUrl}/?tab=login`, 301);
+      const returnTo = url.searchParams.get('return_to');
+      let redirectUrl = `${baseUrl}/?tab=login`;
+      if (returnTo) {
+        redirectUrl += `&return_to=${encodeURIComponent(returnTo)}`;
+      }
+      return Response.redirect(redirectUrl, 302);  // 302 not 301 since URL varies
     }
 
     // Custom login - Step 2: Send Magic Auth code

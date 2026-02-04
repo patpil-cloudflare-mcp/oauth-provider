@@ -28,7 +28,10 @@ export async function handleRootPath(request: Request): Promise<Response | null>
     // Get error message from URL param (if any)
     const errorParam = url.searchParams.get('error');
 
-    return new Response(renderUnifiedAuthPage(csrfToken, activeTab, errorParam || undefined), {
+    // Get return_to from URL param (for OAuth flow continuation)
+    const returnTo = url.searchParams.get('return_to') || '/dashboard';
+
+    return new Response(renderUnifiedAuthPage(csrfToken, activeTab, errorParam || undefined, returnTo), {
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',

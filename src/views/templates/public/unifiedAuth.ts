@@ -2,7 +2,24 @@
 
 export type AuthTab = 'login' | 'register';
 
-export function renderUnifiedAuthPage(csrfToken: string, activeTab: AuthTab = 'login', error?: string): string {
+/**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export function renderUnifiedAuthPage(
+  csrfToken: string,
+  activeTab: AuthTab = 'login',
+  error?: string,
+  returnTo: string = '/dashboard'
+): string {
   const isLogin = activeTab === 'login';
 
   return `
@@ -244,7 +261,7 @@ export function renderUnifiedAuthPage(csrfToken: string, activeTab: AuthTab = 'l
 
       <form id="authForm" action="/auth/login-custom/send-code" method="POST" onsubmit="handleSubmit(event)">
         <input type="hidden" name="csrf_token" id="csrfToken" value="${csrfToken}">
-        <input type="hidden" name="return_to" value="/dashboard">
+        <input type="hidden" name="return_to" value="${escapeHtml(returnTo)}">
         <input type="hidden" name="mode" id="mode" value="${activeTab}">
 
         <div class="form-group">
