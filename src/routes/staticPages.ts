@@ -45,13 +45,12 @@ export async function handleRootPath(request: Request): Promise<Response | null>
     return new Response(JSON.stringify({
       service: 'MCP OAuth Provider',
       status: 'operational',
-      version: '2.0.0',
+      version: '3.0.0',
+      auth: 'WorkOS AuthKit MCP Auth',
       endpoints: {
-        oauth_authorize: '/oauth/authorize',
-        oauth_token: '/oauth/token',
         oauth_userinfo: '/oauth/userinfo',
-        oauth_revoke: '/oauth/revoke',
-        well_known: '/.well-known/oauth-authorization-server'
+        well_known_protected_resource: '/.well-known/oauth-protected-resource',
+        well_known_authorization_server: '/.well-known/oauth-authorization-server',
       },
       documentation: 'https://wtyczki.ai/docs'
     }), {

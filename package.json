@@ -14,10 +14,7 @@
     "test:verbose": "vitest run --reporter=verbose"
   },
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "^0.1.0",
-    "@modelcontextprotocol/sdk": "^1.20.0",
-    "@workos-inc/node": "^7.74.2",
-    "agents": "^0.2.26",
+    "@workos-inc/node": "^8.4.0",
     "jose": "^6.1.0",
     "wrangler": "^4.45.0"
   },

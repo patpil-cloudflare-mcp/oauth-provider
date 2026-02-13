@@ -288,10 +288,30 @@ async function getUserByEmail(email: string, db: D1Database): Promise<User | nul
       user_id,
       email,
       created_at,
-      last_login_at
+      last_login_at,
+      workos_user_id
     FROM users
     WHERE email = ?
   `).bind(email).first();
+
+  return result as User | null;
+}
+
+/**
+ * Helper: Get user by WorkOS user ID from database
+ * Primary lookup method — prevents duplicate records when email changes in WorkOS
+ */
+async function getUserByWorkosId(workosUserId: string, db: D1Database): Promise<User | null> {
+  const result = await db.prepare(`
+    SELECT
+      user_id,
+      email,
+      created_at,
+      last_login_at,
+      workos_user_id
+    FROM users
+    WHERE workos_user_id = ?
+  `).bind(workosUserId).first();
 
   return result as User | null;
 }
@@ -309,50 +329,54 @@ export async function getOrCreateUser(
   workosUserId: string,
   env: { TOKEN_DB: D1Database }
 ): Promise<{ user: User; isNewUser: boolean }> {
-  // Check if user exists
-  const existingUser = await getUserByEmail(email, env.TOKEN_DB);
-
-  const userId = existingUser?.user_id || crypto.randomUUID();
   const timestamp = new Date().toISOString();
-  const isNewUser = !existingUser;
 
-  // UPSERT: Insert new user or update existing user with WorkOS ID
-  // SQLite ON CONFLICT requires a UNIQUE constraint - email has one
-  await env.TOKEN_DB.prepare(`
-    INSERT INTO users (
-      user_id,
-      email,
-      created_at,
-      last_login_at,
-      workos_user_id
-    ) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(email) DO UPDATE SET
-      last_login_at = excluded.last_login_at,
-      workos_user_id = excluded.workos_user_id
-  `).bind(
-    userId,
-    email,
-    timestamp,
-    timestamp,
-    workosUserId
-  ).run();
+  // Primary lookup: by workos_user_id (handles email changes in WorkOS)
+  let existingUser = await getUserByWorkosId(workosUserId, env.TOKEN_DB);
 
-  if (isNewUser) {
-    console.log(`🆕 [auth] New user created: ${userId}`);
-    console.log(`   Email: ${email}`);
-    console.log(`   WorkOS ID: ${workosUserId}`);
-  } else {
-    console.log(`👤 [auth] Existing user updated: ${userId}`);
-    console.log(`   WorkOS ID saved: ${workosUserId}`);
+  // Fallback lookup: by email (for users who don't have workos_user_id yet)
+  if (!existingUser) {
+    existingUser = await getUserByEmail(email, env.TOKEN_DB);
   }
 
-  // Return user object
+  if (existingUser) {
+    // Update existing user: sync email from WorkOS + update login timestamp
+    await env.TOKEN_DB.prepare(`
+      UPDATE users
+      SET email = ?, last_login_at = ?, workos_user_id = ?
+      WHERE user_id = ?
+    `).bind(email, timestamp, workosUserId, existingUser.user_id).run();
+
+    console.log(`👤 [auth] Existing user updated: ${existingUser.user_id}`);
+    console.log(`   Email synced: ${email}, WorkOS ID: ${workosUserId}`);
+
+    const user: User = {
+      user_id: existingUser.user_id,
+      email,
+      created_at: existingUser.created_at,
+      last_login_at: timestamp,
+    };
+
+    return { user, isNewUser: false };
+  }
+
+  // Create new user
+  const userId = crypto.randomUUID();
+
+  await env.TOKEN_DB.prepare(`
+    INSERT INTO users (user_id, email, created_at, last_login_at, workos_user_id)
+    VALUES (?, ?, ?, ?, ?)
+  `).bind(userId, email, timestamp, timestamp, workosUserId).run();
+
+  console.log(`🆕 [auth] New user created: ${userId}`);
+  console.log(`   Email: ${email}, WorkOS ID: ${workosUserId}`);
+
   const user: User = {
     user_id: userId,
     email,
-    created_at: existingUser?.created_at || timestamp,
+    created_at: timestamp,
     last_login_at: timestamp,
   };
 
-  return { user, isNewUser };
+  return { user, isNewUser: true };
 }

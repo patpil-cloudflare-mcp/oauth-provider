@@ -205,15 +205,21 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
     console.log(`   WorkOS user ID: ${workosUser.id}`);
 
     // Load user from D1 database
-    const dbUser = await env.TOKEN_DB.prepare(`
-      SELECT
-        user_id,
-        email,
-        created_at,
-        last_login_at
+    // Primary lookup: by workos_user_id (handles email changes in WorkOS)
+    let dbUser = await env.TOKEN_DB.prepare(`
+      SELECT user_id, email, created_at, last_login_at, workos_user_id
       FROM users
-      WHERE email = ?
-    `).bind(email).first();
+      WHERE workos_user_id = ?
+    `).bind(workosUser.id).first();
+
+    // Fallback: lookup by email (for users without workos_user_id yet)
+    if (!dbUser) {
+      dbUser = await env.TOKEN_DB.prepare(`
+        SELECT user_id, email, created_at, last_login_at, workos_user_id
+        FROM users
+        WHERE email = ?
+      `).bind(email).first();
+    }
 
     if (!dbUser) {
       console.error(`❌ [custom-auth] User not found in database: ${email}`);
@@ -227,13 +233,13 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
       });
     }
 
-    // Update last login timestamp and WorkOS user ID
+    // Update email (syncs from WorkOS), login timestamp, and WorkOS user ID
     await env.TOKEN_DB.prepare(
-      'UPDATE users SET last_login_at = ?, workos_user_id = ? WHERE user_id = ?'
-    ).bind(new Date().toISOString(), workosUser.id, dbUser.user_id).run();
+      'UPDATE users SET email = ?, last_login_at = ?, workos_user_id = ? WHERE user_id = ?'
+    ).bind(workosUser.email, new Date().toISOString(), workosUser.id, dbUser.user_id).run();
 
     console.log(`✅ [custom-auth] User loaded from database: ${dbUser.user_id}`);
-    console.log(`   WorkOS ID saved: ${workosUser.id}`);
+    console.log(`   Email synced: ${workosUser.email}, WorkOS ID: ${workosUser.id}`);
 
     // Create session token
     const sessionToken = crypto.randomUUID();
