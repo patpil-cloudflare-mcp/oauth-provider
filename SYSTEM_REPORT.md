@@ -545,26 +545,42 @@ These endpoints were removed as AuthKit now handles them:
 | Client ID Metadata Document | Enabled | For newer MCP clients |
 | JWT verification via JWKS | Implemented | `jose.jwtVerify()` with `createRemoteJWKSet` |
 | Issuer validation | Implemented | JWT `iss` must match `AUTHKIT_DOMAIN` |
+| Audience validation | Implemented | JWT `aud` validated against `WORKOS_CLIENT_ID` when present |
 | WWW-Authenticate header | Implemented | All 401s include `resource_metadata` URL |
 | Token refresh | Delegated to AuthKit | Rotation handled by AuthKit |
+| Session invalidation on logout | Implemented | KV entry deleted immediately on `POST /auth/logout` |
 
 ### 9.2 CSRF Protection
 
 - **Magic Auth forms:** Double-submit cookie pattern. CSRF token in form + `magic_auth_csrf` cookie. Validated on every POST.
 - **Session cookie:** `SameSite=Lax` prevents cross-origin form submissions.
 
-### 9.3 Deleted User Protection
+### 9.3 Open Redirect Protection
+
+All redirect targets from user-controlled input are validated via `safeRedirectPath()` (`src/utils/safeRedirect.ts`):
+- **`/auth/callback` `state` param** — validated before use as `Location` header
+- **`return_to` form field** — validated in both `handleSendMagicAuthCode()` and `handleVerifyMagicAuthCode()`
+- **Auth middleware redirects** — use `url.origin` instead of hardcoded domain
+
+The utility rejects absolute URLs, protocol-relative URLs (`//evil.com`), and backslash tricks (`\/evil.com`), falling back to `/dashboard`.
+
+### 9.4 XSS Protection
+
+- **HTML escaping:** All user-controlled values rendered in HTML templates are escaped via `escapeHtml()`, including error messages from URL query parameters and `returnTo` values in form fields.
+- **Error responses:** Internal error details (stack traces, SDK messages) are never exposed to clients. Generic error messages are returned instead.
+
+### 9.5 Deleted User Protection
 
 Every token validation path checks `is_deleted = 0`:
 - AuthKit JWTs: `handleUserInfoEndpoint()` looks up user by `workos_user_id` with `is_deleted = 0`
 - API keys: `validateApiKey()` verifies user exists and is not deleted
 - If user is deleted, 401 is returned immediately
 
-### 9.4 Email Change Protection
+### 9.6 Email Change Protection
 
 User lookup uses `workos_user_id` as the primary key (with `UNIQUE` constraint in DB), falling back to `email` only for users who haven't authenticated via WorkOS yet. This prevents duplicate records when a user changes their email in WorkOS.
 
-### 9.5 Cookie Security
+### 9.7 Cookie Security
 
 ```
 HttpOnly     → No JavaScript access (XSS protection)
@@ -573,7 +589,7 @@ SameSite=Lax → CSRF protection
 Domain=.wtyczki.ai → Shared across subdomains
 ```
 
-### 9.6 API Key Hashing
+### 9.8 API Key Hashing
 
 Keys are hashed with SHA-256 using the Web Crypto API before storage. The plaintext key is shown once at generation and never stored. The `key_prefix` (first 16 chars) is stored separately for UI display.
 
