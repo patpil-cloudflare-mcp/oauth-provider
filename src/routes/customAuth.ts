@@ -286,7 +286,7 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
 
     // For OAuth flows, redirect immediately without showing success page
     // (the OAuth consent page will appear next)
-    const isOAuthFlow = returnTo.startsWith('/oauth/authorize');
+    const isOAuthFlow = returnTo.startsWith('/oauth/authorize') || returnTo.startsWith('/auth/connect-login');
 
     if (isOAuthFlow) {
       console.log(`🔄 [custom-auth] OAuth flow detected, redirecting immediately to: ${returnTo}`);

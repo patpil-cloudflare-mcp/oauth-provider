@@ -19,6 +19,7 @@ import {
   handleSendMagicAuthCode,
   handleVerifyMagicAuthCode,
 } from './routes/customAuth';
+import { handleConnectLogin } from './routes/connectAuth';
 import {
   handleSettingsPage,
 } from './routes/accountSettings';
@@ -173,6 +174,14 @@ export default {
     // Custom login - Step 3: Verify code and create session
     if (url.pathname === '/auth/login-custom/verify-code' && request.method === 'POST') {
       return await handleVerifyMagicAuthCode(request, env);
+    }
+
+    // ============================================================
+    // STANDALONE CONNECT (Public - AuthKit redirects here for custom login)
+    // ============================================================
+
+    if (url.pathname === '/auth/connect-login' && request.method === 'GET') {
+      return await handleConnectLogin(request, env);
     }
 
     // ============================================================
