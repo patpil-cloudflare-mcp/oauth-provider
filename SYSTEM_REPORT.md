@@ -3,7 +3,7 @@
 **Project**: mcp-oauth — MCP Authentication via WorkOS AuthKit
 **Platform**: Cloudflare Workers (Serverless Edge Computing)
 **Domains**: `panel.wtyczki.ai` (Dashboard), `api.wtyczki.ai` (API)
-**Last Updated**: 2026-02-13
+**Last Updated**: 2026-02-14
 
 ---
 
@@ -48,7 +48,8 @@ The system delegates all OAuth 2.1 authorization (authorization codes, tokens, P
 │  • /oauth2/register (DCR) │  │  │ (JWT +   │  │  + API Key   │  │
 │  • /oauth2/introspection  │  │  │  API Key) │  │  Management  │  │
 │  • Consent UI             │  │  └─────┬────┘  └──────┬───────┘  │
-│  • Login UI (AuthKit)     │  │        │              │           │
+│  • Login UI (AuthKit      │  │
+│    or custom via Connect) │  │        │              │           │
 │                           │  │  ┌─────┴──────────────┴────────┐ │
 │  Domain:                  │  │  │      Authentication Layer     │ │
 │  exciting-domain-65       │  │  │  WorkOS Magic Auth + Sessions │ │
@@ -100,8 +101,9 @@ POST /auth/login-custom/send-code
          ├── Validate email format
          ├── Check user does NOT exist in D1 → reject if exists
          ├── INSERT new user into D1 (users table)
-         ├── Call WorkOS: createMagicAuth({ email })
-         │   → WorkOS sends 6-digit code to email
+         ├── Call WorkOS REST API: POST /user_management/magic_auth
+         │   → Forwards browser Accept-Language header (fallback: pl)
+         │   → WorkOS sends 6-digit code to email in user's language
          └── Return code input form (with new CSRF token)
                   │
                   │ User enters 6-digit code
@@ -118,6 +120,9 @@ POST /auth/login-custom/verify-code
          ├── Store session in KV (USER_SESSIONS) with 72h TTL
          ├── Set cookie: workos_session=<token>
          └── Redirect to /dashboard (or return_to URL)
+
+Note: The `return_to` parameter is preserved across tab switches (login ↔ register)
+and error redirects, ensuring MCP connect flows don't lose context.
 ```
 
 ### 2.2 Login Flow
@@ -170,7 +175,7 @@ GET /auth/logout-success → Static HTML confirmation page
 
 ## 3. MCP Authorization Flow — How MCP Clients Connect
 
-MCP clients (like Claude Desktop) authenticate via **WorkOS AuthKit** which handles the full OAuth 2.1 flow. The Worker acts as the resource server only.
+MCP clients (like Claude Desktop) authenticate via **WorkOS AuthKit** which handles the full OAuth 2.1 flow. The Worker acts as the resource server, and uses **Standalone Connect** to show the custom Magic Auth login instead of AuthKit's native UI.
 
 ### 3.1 Discovery
 
@@ -198,7 +203,7 @@ MCP clients discover the authorization server via well-known endpoints:
 - PKCE: `S256` only
 - Dynamic Client Registration (DCR) + Client ID Metadata Document (CIMD) enabled
 
-### 3.2 Authorization Code Flow with PKCE
+### 3.2 Authorization Code Flow with PKCE (via Standalone Connect)
 
 ```
 MCP Client                   AuthKit                    Worker (Resource Server)
@@ -219,15 +224,31 @@ MCP Client                   AuthKit                    Worker (Resource Server)
     │                       │                                   │
     │  5. GET /oauth2/authorize                                 │
     │──────────────────────▶│                                   │
-    │                       │──Show AuthKit login + consent UI  │
-    │                       │  User logs in & approves          │
+    │                       │                                   │
+    │  6. AuthKit redirects to Login URI (Standalone Connect)   │
+    │                       │──302 /auth/connect-login──────────▶│
+    │                       │   ?external_auth_id=xxx           │
+    │                       │                                   │
+    │  7a. No session → Redirect to custom login                │
+    │                       │         /?tab=login&return_to=... │
+    │                       │         User logs in via Magic Auth│
+    │                       │         → Redirects back to        │
+    │                       │           /auth/connect-login      │
+    │                       │                                   │
+    │  7b. Session exists → Call completion API                 │
+    │                       │◀─POST /authkit/oauth2/complete────│
+    │                       │   { external_auth_id, user }      │
+    │                       │──{ redirect_uri }─────────────────▶│
+    │                       │◀─302 redirect to AuthKit──────────│
+    │                       │                                   │
+    │  8. AuthKit consent + token issuance                      │
     │◀─302 redirect_uri?code=xxx&state=xxx                      │
     │                       │                                   │
-    │  6. POST /oauth2/token (code + code_verifier)             │
+    │  9. POST /oauth2/token (code + code_verifier)             │
     │──────────────────────▶│                                   │
     │◀─JSON: access_token (JWT), refresh_token                  │
     │                       │                                   │
-    │  7. GET /oauth/userinfo (Bearer JWT)─────────────────────▶│
+    │ 10. GET /oauth/userinfo (Bearer JWT)─────────────────────▶│
     │                       │           ├── Verify JWT via JWKS │
     │                       │           ├── Check issuer claim  │
     │                       │           ├── Lookup user by sub  │
@@ -235,7 +256,38 @@ MCP Client                   AuthKit                    Worker (Resource Server)
     │◀─JSON: { sub, email }─────────────────────────────────────│
 ```
 
-### 3.3 WWW-Authenticate Header (MCP Discovery)
+### 3.3 Standalone Connect — Custom Login for MCP
+
+Instead of showing AuthKit's native login page, MCP clients see the same custom Magic Auth login used at `panel.wtyczki.ai`. This is implemented via **WorkOS Standalone Connect**.
+
+**How it works:**
+
+1. AuthKit's **Login URI** is configured to `https://panel.wtyczki.ai/auth/connect-login`
+2. When an MCP client initiates OAuth, AuthKit redirects to this URL with an `external_auth_id` parameter
+3. The handler checks for an existing session:
+   - **Session exists:** Calls the AuthKit completion API (`POST https://api.workos.com/authkit/oauth2/complete`) with the user's WorkOS ID and email, then redirects to the returned `redirect_uri`
+   - **No session:** Redirects to the login page (`/?tab=login&return_to=/auth/connect-login?external_auth_id=xxx`), user goes through Magic Auth, then returns to complete the flow
+
+**Completion API call:**
+```
+POST https://api.workos.com/authkit/oauth2/complete
+Authorization: Bearer {WORKOS_API_KEY}
+Content-Type: application/json
+
+{
+  "external_auth_id": "<from AuthKit redirect>",
+  "user": {
+    "id": "<workos_user_id from KV session>",
+    "email": "<email from KV session>"
+  }
+}
+
+Response: { "redirect_uri": "<AuthKit URL for consent/token issuance>" }
+```
+
+**Source file:** `src/routes/connectAuth.ts`
+
+### 3.4 WWW-Authenticate Header (MCP Discovery)
 
 All 401 responses from `/oauth/userinfo` include a `WWW-Authenticate` header with the `resource_metadata` parameter. This enables MCP clients to automatically discover the authorization server:
 
@@ -245,11 +297,11 @@ WWW-Authenticate: Bearer error="unauthorized",
   resource_metadata="https://panel.wtyczki.ai/.well-known/oauth-protected-resource"
 ```
 
-### 3.4 Token Refresh
+### 3.5 Token Refresh
 
 Handled entirely by AuthKit. MCP clients send refresh tokens directly to AuthKit's `/oauth2/token` endpoint. The Worker is not involved.
 
-### 3.5 Dynamic Client Registration (DCR) + CIMD
+### 3.6 Dynamic Client Registration (DCR) + CIMD
 
 Both are enabled in WorkOS Dashboard under Connect → Configuration:
 - **DCR (RFC 7591):** MCP clients can self-register at AuthKit's `/oauth2/register` endpoint
@@ -454,6 +506,7 @@ GDPR audit trail for account deletions.
 | GET | `/auth/login-custom` | Redirect to unified auth |
 | POST | `/auth/login-custom/send-code` | Send Magic Auth code |
 | POST | `/auth/login-custom/verify-code` | Verify code & create session |
+| GET | `/auth/connect-login` | Standalone Connect — AuthKit redirects here for custom login |
 | GET | `/auth/logout-success` | Logout confirmation page |
 | GET | `/privacy` | Privacy policy |
 | GET | `/terms` | Terms of service |
@@ -555,7 +608,7 @@ Keys are hashed with SHA-256 using the Web Crypto API before storage. The plaint
 6. (Optional) Create API key for an MCP client
 ```
 
-### 11.2 MCP Client — Connecting via AuthKit
+### 11.2 MCP Client — Connecting via AuthKit + Standalone Connect
 
 ```
 1. MCP client (e.g., Claude Desktop) makes request to resource server
@@ -563,11 +616,15 @@ Keys are hashed with SHA-256 using the Web Crypto API before storage. The plaint
 3. Fetches /.well-known/oauth-protected-resource
 4. Discovers AuthKit as the authorization server
 5. (Optional) Self-registers via DCR or uses CIMD
-6. Redirects user to AuthKit login + consent UI
-7. User authenticates and approves
-8. AuthKit issues access token (JWT) + refresh token
-9. MCP client calls /oauth/userinfo with Bearer JWT
-10. Worker verifies JWT via JWKS, returns user profile
+6. Redirects user to AuthKit /oauth2/authorize
+7. AuthKit redirects to custom Login URI (/auth/connect-login)
+8a. If user has active session → completion API called → skip to step 10
+8b. If no session → user sees custom Magic Auth login page
+9. User enters email → receives Polish code → verifies code → session created
+   → redirected back to /auth/connect-login → completion API called
+10. AuthKit handles consent and issues access token (JWT) + refresh token
+11. MCP client calls /oauth/userinfo with Bearer JWT
+12. Worker verifies JWT via JWKS, returns user profile
 ```
 
 ### 11.3 User — Managing Access
@@ -639,7 +696,9 @@ npx wrangler d1 migrations apply mcp-oauth --remote
 | AuthKit Domain | `exciting-domain-65.authkit.app` |
 | Dynamic Client Registration | Enabled |
 | Client ID Metadata Document | Enabled |
+| Login URI (Standalone Connect) | `https://panel.wtyczki.ai/auth/connect-login` |
 | Logout URI | `https://panel.wtyczki.ai/auth/logout-success` |
+| Localization | Enabled, fallback language: Polish (`pl`) |
 
 ---
 
@@ -660,11 +719,17 @@ No rate limiting is implemented on any endpoint. Consider adding rate limiting t
 
 The `OAUTH_KV` binding is no longer used by code but remains in `wrangler.toml`. It should be removed after 30+ days to allow any existing refresh tokens issued by the old OAuth server to expire.
 
-### 14.4 No JWT Audience Validation
+### 14.4 Magic Auth Email Localization
+
+Magic Auth emails are sent via direct REST API call (bypassing the WorkOS SDK) to forward the user's browser `Accept-Language` header. This ensures WorkOS sends the email in the user's language (with Polish as the fallback). The SDK's `createMagicAuth()` method does not support passing custom headers.
+
+**Implementation:** `src/routes/customAuth.ts` calls `POST https://api.workos.com/user_management/magic_auth` directly with `Accept-Language` header from the user's browser request.
+
+### 14.5 No JWT Audience Validation
 
 The `/oauth/userinfo` endpoint validates the JWT `issuer` (`iss`) claim but does not validate the `audience` (`aud`) claim. This matches WorkOS's own example code. Can be added later if AuthKit starts including audience claims in MCP tokens.
 
 ---
 
-*Report generated: 2026-02-13*
-*Source: Full codebase analysis of mcp-oauth repository after AuthKit MCP Auth migration*
+*Report generated: 2026-02-14*
+*Source: Full codebase analysis of mcp-oauth repository after AuthKit MCP Auth migration + Standalone Connect*
