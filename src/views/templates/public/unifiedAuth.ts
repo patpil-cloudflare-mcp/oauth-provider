@@ -318,6 +318,10 @@ export function renderUnifiedAuthPage(
       }
     };
 
+    // Preserve return_to across tab switches and page reloads
+    const returnToInput = document.querySelector('input[name="return_to"]');
+    const returnToValue = returnToInput ? returnToInput.value : '';
+
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
         // Update active tab
@@ -337,8 +341,11 @@ export function renderUnifiedAuthPage(
         errorMessage.classList.remove('visible');
         errorMessage.textContent = '';
 
-        // Update URL without reload
-        const newUrl = mode === 'login' ? '/' : '/?tab=register';
+        // Update URL without reload — preserve return_to param
+        const params = new URLSearchParams();
+        if (mode === 'register') params.set('tab', 'register');
+        if (returnToValue && returnToValue !== '/dashboard') params.set('return_to', returnToValue);
+        const newUrl = params.toString() ? '/?' + params.toString() : '/';
         history.replaceState(null, '', newUrl);
 
         // Update page title

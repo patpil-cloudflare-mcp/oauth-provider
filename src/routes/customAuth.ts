@@ -12,13 +12,14 @@ import { renderLoginSuccessPage } from '../views';
 export async function handleSendMagicAuthCode(request: Request, env: Env): Promise<Response> {
   const secureAttr = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
 
+  // Parse form data FIRST (outside try-catch so variables are accessible in catch)
+  const formData = await request.formData();
+  const email = formData.get('email')?.toString().trim();
+  const returnTo = formData.get('return_to')?.toString() || '/dashboard';
+  const csrfToken = formData.get('csrf_token')?.toString();
+  const mode = formData.get('mode')?.toString() || 'login'; // 'login' or 'register'
+
   try {
-    // Parse form data
-    const formData = await request.formData();
-    const email = formData.get('email')?.toString().trim();
-    const returnTo = formData.get('return_to')?.toString() || '/dashboard';
-    const csrfToken = formData.get('csrf_token')?.toString();
-    const mode = formData.get('mode')?.toString() || 'login'; // 'login' or 'register'
 
     // OAuth 2.1: CSRF Protection
     const cookieHeader = request.headers.get('Cookie');
@@ -26,28 +27,32 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       .find(c => c.trim().startsWith('magic_auth_csrf='))
       ?.split('=')[1];
 
+    // Helper to build error redirects preserving return_to
+    const baseUrl = new URL(request.url).origin;
+    const buildErrorRedirect = (tab: string, errorMsg: string) => {
+      const params = new URLSearchParams({ tab, error: errorMsg });
+      if (returnTo && returnTo !== '/dashboard') {
+        params.set('return_to', returnTo);
+      }
+      return Response.redirect(`${baseUrl}/?${params.toString()}`, 303);
+    };
+
     if (!csrfToken || !cookieCsrf || csrfToken !== cookieCsrf) {
       console.error('🔒 [magic-auth] CSRF validation failed');
-      const baseUrl = new URL(request.url).origin;
       const tab = mode === 'register' ? 'register' : 'login';
-      const errorMsg = encodeURIComponent('Nieprawidłowe żądanie. Odśwież stronę i spróbuj ponownie.');
-      return Response.redirect(`${baseUrl}/?tab=${tab}&error=${errorMsg}`, 303);
+      return buildErrorRedirect(tab, 'Nieprawidłowe żądanie. Odśwież stronę i spróbuj ponownie.');
     }
 
     if (!email) {
-      const baseUrl = new URL(request.url).origin;
       const tab = mode === 'register' ? 'register' : 'login';
-      const errorMsg = encodeURIComponent('Proszę podać adres e-mail.');
-      return Response.redirect(`${baseUrl}/?tab=${tab}&error=${errorMsg}`, 303);
+      return buildErrorRedirect(tab, 'Proszę podać adres e-mail.');
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      const baseUrl = new URL(request.url).origin;
       const tab = mode === 'register' ? 'register' : 'login';
-      const errorMsg = encodeURIComponent('Nieprawidłowy format adresu e-mail.');
-      return Response.redirect(`${baseUrl}/?tab=${tab}&error=${errorMsg}`, 303);
+      return buildErrorRedirect(tab, 'Nieprawidłowy format adresu e-mail.');
     }
 
     console.log(`🔐 [custom-auth] Email submitted: ${email}`);
@@ -62,9 +67,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       // REGISTRATION MODE: Create new user, reject if exists
       if (existingUser) {
         console.log(`ℹ️ [custom-auth] Registration rejected - user exists: ${existingUser.user_id}`);
-        const baseUrl = new URL(request.url).origin;
-        const errorMsg = encodeURIComponent('Konto z tym adresem email już istnieje. Przejdź do zakładki Logowanie.');
-        return Response.redirect(`${baseUrl}/?tab=register&error=${errorMsg}`, 303);
+        return buildErrorRedirect('register', 'Konto z tym adresem email już istnieje. Przejdź do zakładki Logowanie.');
       }
 
       // Create new user
@@ -84,9 +87,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       // LOGIN MODE: Send code to existing user, reject if not exists
       if (!existingUser) {
         console.log(`❌ [custom-auth] Login rejected - user not found: ${email}`);
-        const baseUrl = new URL(request.url).origin;
-        const errorMsg = encodeURIComponent('Nie znaleziono konta z tym adresem email. Przejdź do zakładki Rejestracja.');
-        return Response.redirect(`${baseUrl}/?tab=login&error=${errorMsg}`, 303);
+        return buildErrorRedirect('login', 'Nie znaleziono konta z tym adresem email. Przejdź do zakładki Rejestracja.');
       }
       console.log(`✅ [custom-auth] Login - user found: ${existingUser.user_id}`);
     }
@@ -138,8 +139,11 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
     }
 
     const baseUrl = new URL(request.url).origin;
-    const errorMsg = encodeURIComponent(errorMessage);
-    return Response.redirect(`${baseUrl}/?error=${errorMsg}`, 303);
+    const params = new URLSearchParams({ error: errorMessage });
+    if (returnTo && returnTo !== '/dashboard') {
+      params.set('return_to', returnTo);
+    }
+    return Response.redirect(`${baseUrl}/?${params.toString()}`, 303);
   }
 }
 
