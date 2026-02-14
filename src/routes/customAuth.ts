@@ -92,31 +92,39 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       console.log(`✅ [custom-auth] Login - user found: ${existingUser.user_id}`);
     }
 
-    // Send Magic Auth code via WorkOS
-    const workos = new WorkOS(env.WORKOS_API_KEY);
-
+    // Send Magic Auth code via WorkOS REST API directly
+    // (bypassing SDK to forward Accept-Language header for Polish emails)
     console.log(`🔄 [custom-auth] Sending Magic Auth code to: ${email}`);
 
-    // Set Polish locale BEFORE sending code so the email arrives in Polish
-    try {
-      const { data: users } = await workos.userManagement.listUsers({ email });
-      if (users.length > 0) {
-        await workos.userManagement.updateUser({
-          userId: users[0].id,
-          locale: 'pl',
-        });
-        console.log(`🌐 [custom-auth] Set locale=pl for WorkOS user: ${users[0].id}`);
-      }
-    } catch (localeError) {
-      console.warn(`[custom-auth] Failed to set locale before sending code:`, localeError);
-    }
+    const acceptLanguage = request.headers.get('Accept-Language') || 'pl';
+    console.log(`🌐 [custom-auth] Forwarding Accept-Language: ${acceptLanguage}`);
 
-    const magicAuth = await workos.userManagement.createMagicAuth({
-      email,
+    const magicAuthResponse = await fetch('https://api.workos.com/user_management/magic_auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.WORKOS_API_KEY}`,
+        'Accept-Language': acceptLanguage,
+      },
+      body: JSON.stringify({ email }),
     });
 
+    if (!magicAuthResponse.ok) {
+      const errorText = await magicAuthResponse.text();
+      console.error(`[custom-auth] Magic Auth API failed (${magicAuthResponse.status}): ${errorText}`);
+      throw new Error(`Magic Auth creation failed: ${magicAuthResponse.status}`);
+    }
+
+    const magicAuth = await magicAuthResponse.json() as {
+      id: string;
+      user_id: string;
+      email: string;
+      code: string;
+      expires_at: string;
+    };
+
     console.log(`✅ [custom-auth] Magic Auth code created: ${magicAuth.id}`);
-    console.log(`   Code expires at: ${magicAuth.expiresAt}`);
+    console.log(`   Code expires at: ${magicAuth.expires_at}`);
 
     // Show code input form with return_to parameter
     // Generate new CSRF token for code verification form
