@@ -1,5 +1,6 @@
 // src/views/templates/dashboard/dashboard.ts - Main Dashboard Page
 import type { User } from '../../../types';
+import { escapeHtml, escapeJs } from '../../../utils/escapeHtml';
 
 interface ApiKey {
   api_key_id: string;
@@ -445,7 +446,7 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
         <h1>Panel MCP</h1>
       </div>
       <div class="header-right">
-        <span class="user-email">${user.email}</span>
+        <span class="user-email">${escapeHtml(user.email)}</span>
         <a href="/dashboard/settings" class="header-link">⚙️ Ustawienia</a>
         <button type="button" class="logout-btn" onclick="handleLogout()">Wyloguj</button>
       </div>
@@ -462,7 +463,7 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
       <div class="account-grid">
         <div class="account-item">
           <div class="account-label">Adres e-mail</div>
-          <div class="account-value">${user.email}</div>
+          <div class="account-value">${escapeHtml(user.email)}</div>
         </div>
         <div class="account-item">
           <div class="account-label">Konto utworzone</div>
@@ -561,7 +562,7 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
   </div>
 
   <script>
-    const userId = '${user.user_id}';
+    const userId = '${escapeJs(user.user_id)}';
 
     function showCreateKeyModal() {
       document.getElementById('createKeyModal').classList.add('visible');

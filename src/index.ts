@@ -144,7 +144,7 @@ export default {
         // Set session cookie
         const headers = new Headers();
         headers.append('Location', state);
-        headers.append('Set-Cookie', `workos_session=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=259200`);
+        headers.append('Set-Cookie', `workos_session=${sessionToken}; Domain=.wtyczki.ai; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=259200`);
 
         return new Response(null, {
           status: 302,
@@ -210,6 +210,11 @@ export default {
       return authResponse;
     }
 
+    // Guard: if route required auth but no user, return 401
+    if (!authenticatedUser) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
     // ============================================================
     // PROTECTED ENDPOINTS
     // ============================================================
@@ -218,9 +223,9 @@ export default {
     if (url.pathname === '/auth/user' && request.method === 'GET') {
       return new Response(JSON.stringify({
         user: {
-          user_id: authenticatedUser!.user_id,
-          email: authenticatedUser!.email,
-          created_at: authenticatedUser!.created_at,
+          user_id: authenticatedUser.user_id,
+          email: authenticatedUser.email,
+          created_at: authenticatedUser.created_at,
         }
       }), {
         status: 200,
@@ -235,11 +240,18 @@ export default {
         FROM api_keys
         WHERE user_id = ? AND is_active = 1
         ORDER BY created_at DESC
-      `).bind(authenticatedUser!.user_id).all();
+      `).bind(authenticatedUser.user_id).all();
 
-      const apiKeys = apiKeysResult.results || [];
+      const apiKeys = (apiKeysResult.results || []) as Array<{
+        api_key_id: string;
+        name: string;
+        key_prefix: string;
+        created_at: string;
+        last_used_at: string | null;
+        is_active: number;
+      }>;
 
-      return new Response(renderDashboardPage(authenticatedUser!, apiKeys as any), {
+      return new Response(renderDashboardPage(authenticatedUser, apiKeys), {
         status: 200,
         headers: { 'Content-Type': 'text/html' }
       });
@@ -247,7 +259,7 @@ export default {
 
     // Settings page
     if (url.pathname === '/dashboard/settings' && request.method === 'GET') {
-      return await handleSettingsPage(authenticatedUser!);
+      return await handleSettingsPage(authenticatedUser);
     }
 
     // ============================================================
@@ -255,17 +267,17 @@ export default {
     // ============================================================
 
     if (url.pathname === '/api/keys/create' && request.method === 'POST') {
-      return await handleCreateApiKey(request, env, authenticatedUser!);
+      return await handleCreateApiKey(request, env, authenticatedUser);
     }
 
     if (url.pathname === '/api/keys/list' && request.method === 'GET') {
-      return await handleListApiKeys(request, env, authenticatedUser!);
+      return await handleListApiKeys(request, env, authenticatedUser);
     }
 
     if (url.pathname.startsWith('/api/keys/') && request.method === 'DELETE') {
       const apiKeyId = url.pathname.split('/').pop();
       if (apiKeyId) {
-        return await handleRevokeApiKey(request, env, authenticatedUser!, apiKeyId);
+        return await handleRevokeApiKey(request, env, authenticatedUser, apiKeyId);
       }
     }
 

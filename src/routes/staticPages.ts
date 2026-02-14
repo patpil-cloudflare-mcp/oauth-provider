@@ -68,7 +68,7 @@ export async function handleRootPath(request: Request): Promise<Response | null>
  */
 export async function handlePrivacyPolicy(): Promise<Response> {
   const html = await fetch('https://panel.wtyczki.ai/legal/privacy-policy.html')
-    .then(r => r.text())
+    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
     .catch(() => `
 <!DOCTYPE html>
 <html lang="pl">
@@ -130,7 +130,7 @@ export async function handlePrivacyPolicy(): Promise<Response> {
  */
 export async function handleTermsOfService(): Promise<Response> {
   const html = await fetch('https://panel.wtyczki.ai/legal/terms-of-service.html')
-    .then(r => r.text())
+    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
     .catch(() => `
 <!DOCTYPE html>
 <html lang="pl">

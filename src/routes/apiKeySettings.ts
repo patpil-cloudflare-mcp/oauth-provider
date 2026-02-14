@@ -43,9 +43,10 @@ export async function handleCreateApiKey(
   try {
     // Parse request body
     const body = await request.json() as { name: string; expiresInDays?: number };
+    const name = body.name?.trim() || '';
 
     // Validate name
-    if (!body.name || body.name.trim().length === 0) {
+    if (!name) {
       return new Response(JSON.stringify({
         success: false,
         error: 'Name is required'
@@ -55,7 +56,7 @@ export async function handleCreateApiKey(
       });
     }
 
-    if (body.name.length > 100) {
+    if (name.length > 100) {
       return new Response(JSON.stringify({
         success: false,
         error: 'Name must be 100 characters or less'
@@ -96,11 +97,11 @@ export async function handleCreateApiKey(
     const result = await generateApiKey(
       env,
       user.user_id,
-      body.name.trim(),
+      name,
       body.expiresInDays
     );
 
-    console.log(`✅ [API Endpoints] Created API key for user ${user.user_id}: ${body.name}`);
+    console.log(`✅ [API Endpoints] Created API key for user ${user.user_id}: ${name}`);
 
     return new Response(JSON.stringify({
       success: true,

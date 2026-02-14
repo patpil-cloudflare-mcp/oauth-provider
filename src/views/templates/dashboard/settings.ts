@@ -1,5 +1,6 @@
 // src/views/templates/dashboard/settings.ts - Account Settings Page
 import type { User } from '../../../types';
+import { escapeHtml, escapeJs } from '../../../utils/escapeHtml';
 
 export function renderSettingsPage(user: User): string {
   return `
@@ -395,7 +396,7 @@ export function renderSettingsPage(user: User): string {
       <h2 class="section-title">Informacje o koncie</h2>
       <div class="info-row">
         <span class="info-label">Email</span>
-        <span class="info-value">${user.email}</span>
+        <span class="info-value">${escapeHtml(user.email)}</span>
       </div>
       <div class="info-row">
         <span class="info-label">Konto utworzone</span>
@@ -501,7 +502,7 @@ export function renderSettingsPage(user: User): string {
       <!-- Email Confirmation -->
       <div style="margin-top: 20px;">
         <p style="font-weight: 600; margin-bottom: 12px;">
-          Aby potwierdzić, wpisz swój email: <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${user.email}</code>
+          Aby potwierdzić, wpisz swój email: <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${escapeHtml(user.email)}</code>
         </p>
         <input
           type="email"
@@ -580,8 +581,8 @@ export function renderSettingsPage(user: User): string {
   </div>
 
   <script>
-    const userId = '${user.user_id}';
-    const userEmail = '${user.email}';
+    const userId = '${escapeJs(user.user_id)}';
+    const userEmail = '${escapeJs(user.email)}';
     let newApiKey = '';
 
     // ============================================================
