@@ -96,20 +96,23 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
 
     console.log(`🔄 [custom-auth] Sending Magic Auth code to: ${email}`);
 
+    // Set Polish locale BEFORE sending code so the email arrives in Polish
+    try {
+      const { data: users } = await workos.userManagement.listUsers({ email });
+      if (users.length > 0) {
+        await workos.userManagement.updateUser({
+          userId: users[0].id,
+          locale: 'pl',
+        });
+        console.log(`🌐 [custom-auth] Set locale=pl for WorkOS user: ${users[0].id}`);
+      }
+    } catch (localeError) {
+      console.warn(`[custom-auth] Failed to set locale before sending code:`, localeError);
+    }
+
     const magicAuth = await workos.userManagement.createMagicAuth({
       email,
     });
-
-    // Set Polish locale on WorkOS user profile for future emails
-    try {
-      await workos.userManagement.updateUser({
-        userId: magicAuth.userId,
-        locale: 'pl',
-      });
-      console.log(`🌐 [custom-auth] Set locale=pl for WorkOS user: ${magicAuth.userId}`);
-    } catch (localeError) {
-      console.warn(`[custom-auth] Failed to set locale:`, localeError);
-    }
 
     console.log(`✅ [custom-auth] Magic Auth code created: ${magicAuth.id}`);
     console.log(`   Code expires at: ${magicAuth.expiresAt}`);
