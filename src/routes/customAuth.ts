@@ -100,6 +100,17 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       email,
     });
 
+    // Set Polish locale on WorkOS user profile for future emails
+    try {
+      await workos.userManagement.updateUser({
+        userId: magicAuth.userId,
+        locale: 'pl',
+      });
+      console.log(`🌐 [custom-auth] Set locale=pl for WorkOS user: ${magicAuth.userId}`);
+    } catch (localeError) {
+      console.warn(`[custom-auth] Failed to set locale:`, localeError);
+    }
+
     console.log(`✅ [custom-auth] Magic Auth code created: ${magicAuth.id}`);
     console.log(`   Code expires at: ${magicAuth.expiresAt}`);
 
@@ -203,6 +214,16 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
 
     console.log(`✅ [custom-auth] WorkOS authentication successful: ${workosUser.email}`);
     console.log(`   WorkOS user ID: ${workosUser.id}`);
+
+    // Ensure Polish locale is set on WorkOS user profile
+    try {
+      await workos.userManagement.updateUser({
+        userId: workosUser.id,
+        locale: 'pl',
+      });
+    } catch (localeError) {
+      console.warn(`[custom-auth] Failed to set locale for user ${workosUser.id}:`, localeError);
+    }
 
     // Load user from D1 database
     // Primary lookup: by workos_user_id (handles email changes in WorkOS)

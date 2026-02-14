@@ -58,8 +58,11 @@ export async function getAuthorizationUrl(
     state,
   });
 
-  console.log('🔐 [workos] Generated authorization URL');
-  return authorizationUrl;
+  // Append Polish locale (not supported in SDK interface, safe to add as query param)
+  const localizedUrl = `${authorizationUrl}&locale=pl`;
+
+  console.log('🔐 [workos] Generated authorization URL with locale=pl');
+  return localizedUrl;
 }
 
 /**
@@ -87,6 +90,17 @@ export async function handleCallback(
 
   console.log(`✅ [workos] Authenticated user: ${workosUser.email}`);
   console.log(`   WorkOS user ID: ${workosUser.id}`);
+
+  // Set Polish locale on WorkOS user profile
+  try {
+    await workos.userManagement.updateUser({
+      userId: workosUser.id,
+      locale: 'pl',
+    });
+    console.log(`🌐 [workos] Set locale=pl for user: ${workosUser.id}`);
+  } catch (localeError) {
+    console.warn(`[workos] Failed to set locale:`, localeError);
+  }
 
   // Get or create user in our database
   const { user } = await getOrCreateUser(workosUser.email, workosUser.id, env);
