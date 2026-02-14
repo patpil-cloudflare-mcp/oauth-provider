@@ -257,7 +257,7 @@ export function renderUnifiedAuthPage(
         ? 'Wprowadź email, aby otrzymać kod weryfikacyjny'
         : 'Zarejestruj się, aby zarządzać aplikacjami MCP i kluczami API'}</p>
 
-      <div id="errorMessage" class="error-message${error ? ' visible' : ''}">${error || ''}</div>
+      <div id="errorMessage" class="error-message${error ? ' visible' : ''}">${escapeHtml(error || '')}</div>
 
       <form id="authForm" action="/auth/login-custom/send-code" method="POST" onsubmit="handleSubmit(event)">
         <input type="hidden" name="csrf_token" id="csrfToken" value="${csrfToken}">

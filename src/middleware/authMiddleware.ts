@@ -56,7 +56,7 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
     const returnUrl = encodeURIComponent(url.pathname + url.search);
     return {
       user: null,
-      response: Response.redirect(`https://panel.wtyczki.ai/auth/login?return_to=${returnUrl}`, 302)
+      response: Response.redirect(`${url.origin}/auth/login?return_to=${returnUrl}`, 302)
     };
   }
 
@@ -69,7 +69,7 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
     const returnUrl = encodeURIComponent(url.pathname + url.search);
     return {
       user: null,
-      response: Response.redirect(`https://panel.wtyczki.ai/auth/login?return_to=${returnUrl}`, 302)
+      response: Response.redirect(`${url.origin}/auth/login?return_to=${returnUrl}`, 302)
     };
   }
 

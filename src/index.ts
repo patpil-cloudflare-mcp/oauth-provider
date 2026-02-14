@@ -10,6 +10,7 @@ import {
   renderLogoutSuccessPage,
 } from './views';
 import { authenticateRequest } from './middleware/authMiddleware';
+import { safeRedirectPath } from './utils/safeRedirect';
 import {
   handleRootPath,
   handlePrivacyPolicy,
@@ -126,7 +127,7 @@ export default {
     if (url.pathname === '/auth/callback' && request.method === 'GET') {
       try {
         const code = url.searchParams.get('code');
-        const state = url.searchParams.get('state') || '/dashboard';
+        const state = safeRedirectPath(url.searchParams.get('state') || '/dashboard');
 
         console.log(`[workos] Callback received, state: ${state}`);
 
@@ -151,7 +152,7 @@ export default {
         });
       } catch (error) {
         console.error('[workos] Callback failed:', error);
-        return new Response(`Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
+        return new Response('Authentication failed. Please try again.', { status: 500 });
       }
     }
 

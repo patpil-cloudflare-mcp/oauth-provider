@@ -5,6 +5,7 @@ import type { Env } from '../index';
 import { renderLoginCodeForm } from '../views/customLoginPage';
 import { renderLoginSuccessPage } from '../views';
 import { checkRateLimit } from '../middleware/rateLimit';
+import { safeRedirectPath } from '../utils/safeRedirect';
 
 /**
  * Handle email submission - Check if user exists, then send Magic Auth code (Step 2)
@@ -16,7 +17,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
   // Parse form data FIRST (outside try-catch so variables are accessible in catch)
   const formData = await request.formData();
   const email = formData.get('email')?.toString().trim();
-  const returnTo = formData.get('return_to')?.toString() || '/dashboard';
+  const returnTo = safeRedirectPath(formData.get('return_to')?.toString() || '/dashboard');
   const csrfToken = formData.get('csrf_token')?.toString();
   const mode = formData.get('mode')?.toString() || 'login'; // 'login' or 'register'
 
@@ -175,7 +176,7 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
   const formData = await request.formData();
   const email = formData.get('email')?.toString().trim() || '';
   const code = formData.get('code')?.toString().trim() || '';
-  const returnTo = formData.get('return_to')?.toString() || '/dashboard';
+  const returnTo = safeRedirectPath(formData.get('return_to')?.toString() || '/dashboard');
   const csrfToken = formData.get('csrf_token')?.toString();
 
   // OAuth 2.1: CSRF Protection
