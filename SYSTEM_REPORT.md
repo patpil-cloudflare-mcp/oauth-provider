@@ -382,7 +382,7 @@ Sessions are created on successful authentication (Magic Auth or AuthKit callbac
 | Source | Session Duration | Cookie Max-Age |
 |---|---|---|
 | Magic Auth (custom login) | 72 hours | 259200 seconds (3 days) |
-| AuthKit callback | 24 hours | 259200 seconds (3 days) |
+| AuthKit callback | 72 hours | 259200 seconds (3 days) |
 | KV auto-expiration | Matches session duration | — |
 
 ### 5.3 Session Cookie
@@ -590,7 +590,7 @@ Keys are hashed with SHA-256 using the Web Crypto API before storage. The plaint
 |---|---|---|---|---|
 | AuthKit access token (JWT) | AuthKit | Client-side | Set by AuthKit | JWKS signature + issuer claim |
 | AuthKit refresh token | AuthKit | Client-side | Set by AuthKit | Sent to AuthKit `/oauth2/token` |
-| Session token | Worker | USER_SESSIONS KV | 24h or 72h | KV lookup |
+| Session token | Worker | USER_SESSIONS KV | 72h | KV lookup |
 | API key | Worker | D1 (hash) | Configurable / never | SHA-256 hash match |
 
 ---
@@ -704,9 +704,9 @@ npx wrangler d1 migrations apply mcp-oauth --remote
 
 ## 14. Known Limitations & TODOs
 
-### 14.1 Session Duration Inconsistency
+### 14.1 Session Duration (Standardized)
 
-Magic Auth creates 72h sessions while AuthKit callback creates 24h sessions. The cookie Max-Age is 3 days (259200s) for both. The effective session duration is determined by the KV TTL, not the cookie.
+All sessions (Magic Auth and AuthKit callback) use a **72-hour** duration. Both the KV TTL (`expirationTtl: 259200`) and in-session `expires_at` timestamp are set to 72 hours. The cookie `Max-Age` is also 259200 seconds (3 days), matching the session lifetime.
 
 ### 14.2 Rate Limiting (Implemented)
 

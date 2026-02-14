@@ -116,13 +116,13 @@ export async function handleCallback(
     access_token: accessToken,
     refresh_token: refreshToken,
     created_at: Date.now(),
-    expires_at: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+    expires_at: Date.now() + (72 * 60 * 60 * 1000), // 72 hours
   };
 
   await env.USER_SESSIONS.put(
     `workos_session:${sessionToken}`,
     JSON.stringify(session),
-    { expirationTtl: 86400 } // 24 hours
+    { expirationTtl: 259200 } // 72 hours
   );
 
   console.log(`🎫 [workos] Session created for user: ${user.user_id}`);
