@@ -4,6 +4,7 @@ import { WorkOS } from '@workos-inc/node';
 import type { Env } from '../index';
 import { renderLoginCodeForm } from '../views/customLoginPage';
 import { renderLoginSuccessPage } from '../views';
+import { checkRateLimit } from '../middleware/rateLimit';
 
 /**
  * Handle email submission - Check if user exists, then send Magic Auth code (Step 2)
@@ -53,6 +54,14 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
     if (!emailRegex.test(email)) {
       const tab = mode === 'register' ? 'register' : 'login';
       return buildErrorRedirect(tab, 'Nieprawidłowy format adresu e-mail.');
+    }
+
+    // Rate limit: max 5 requests per 60s per email
+    const withinLimit = await checkRateLimit(env.RATE_LIMIT_SEND_CODE, `send-code:${email.toLowerCase()}`);
+    if (!withinLimit) {
+      console.warn(`⚠️ [rate-limit] send-code rate limit exceeded for: ${email}`);
+      const tab = mode === 'register' ? 'register' : 'login';
+      return buildErrorRedirect(tab, 'Zbyt wiele prób. Poczekaj minutę i spróbuj ponownie.');
     }
 
     console.log(`🔐 [custom-auth] Email submitted: ${email}`);
@@ -208,6 +217,20 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
     const newCsrf = crypto.randomUUID();
     return new Response(renderLoginCodeForm(email, 'Kod musi składać się z 6 cyfr', returnTo, newCsrf), {
       status: 400,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`
+      }
+    });
+  }
+
+  // Rate limit: max 10 requests per 60s per email
+  const withinLimit = await checkRateLimit(env.RATE_LIMIT_VERIFY_CODE, `verify-code:${email.toLowerCase()}`);
+  if (!withinLimit) {
+    console.warn(`⚠️ [rate-limit] verify-code rate limit exceeded for: ${email}`);
+    const newCsrf = crypto.randomUUID();
+    return new Response(renderLoginCodeForm(email, 'Zbyt wiele prób weryfikacji. Poczekaj minutę i spróbuj ponownie.', returnTo, newCsrf), {
+      status: 429,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Set-Cookie': `magic_auth_csrf=${newCsrf}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureAttr}`

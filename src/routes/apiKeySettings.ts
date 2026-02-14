@@ -9,6 +9,7 @@ import {
   revokeApiKey,
   type ApiKey,
 } from '../apiKeys';
+import { checkRateLimit, rateLimitJsonResponse } from '../middleware/rateLimit';
 
 /**
  * Handle POST /api/keys/create
@@ -32,6 +33,13 @@ export async function handleCreateApiKey(
   env: Env,
   user: User
 ): Promise<Response> {
+  // Rate limit: max 5 requests per 60s per user
+  const withinLimit = await checkRateLimit(env.RATE_LIMIT_API_KEYS, `api-keys:${user.user_id}`);
+  if (!withinLimit) {
+    console.warn(`⚠️ [rate-limit] api-keys rate limit exceeded for user: ${user.user_id}`);
+    return rateLimitJsonResponse('Too many requests. Please wait a minute and try again.');
+  }
+
   try {
     // Parse request body
     const body = await request.json() as { name: string; expiresInDays?: number };

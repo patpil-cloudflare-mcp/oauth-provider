@@ -41,3 +41,28 @@ preview_id = "49c43fb4d6e242db87fd885ba46b5a1d"
 
 # NOTE: Durable Objects deferred to production version
 # Prototype uses simple REST endpoints for faster validation
+
+# Rate Limiting Bindings (Workers Rate Limiting, GA Sep 2025)
+[[ratelimits]]
+name = "RATE_LIMIT_SEND_CODE"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 5
+  period = 60
+
+[[ratelimits]]
+name = "RATE_LIMIT_VERIFY_CODE"
+namespace_id = "1002"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[ratelimits]]
+name = "RATE_LIMIT_API_KEYS"
+namespace_id = "1003"
+
+  [ratelimits.simple]
+  limit = 5
+  period = 60

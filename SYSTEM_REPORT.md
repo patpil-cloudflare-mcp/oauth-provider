@@ -708,12 +708,21 @@ npx wrangler d1 migrations apply mcp-oauth --remote
 
 Magic Auth creates 72h sessions while AuthKit callback creates 24h sessions. The cookie Max-Age is 3 days (259200s) for both. The effective session duration is determined by the KV TTL, not the cookie.
 
-### 14.2 No Rate Limiting
+### 14.2 Rate Limiting (Implemented)
 
-No rate limiting is implemented on any endpoint. Consider adding rate limiting to:
-- `/auth/login-custom/send-code` (prevent email spam)
-- `/auth/login-custom/verify-code` (prevent brute force)
-- `/api/keys/create` (prevent key generation spam)
+Rate limiting is implemented using **Cloudflare Workers Rate Limiting bindings** (GA Sep 2025). Three bindings protect the most sensitive endpoints:
+
+| Binding | Endpoint | Limit | Period | Key Strategy |
+|---|---|---|---|---|
+| `RATE_LIMIT_SEND_CODE` | `/auth/login-custom/send-code` | 5 req | 60s | `send-code:{email}` |
+| `RATE_LIMIT_VERIFY_CODE` | `/auth/login-custom/verify-code` | 10 req | 60s | `verify-code:{email}` |
+| `RATE_LIMIT_API_KEYS` | `/api/keys/create` | 5 req | 60s | `api-keys:{user_id}` |
+
+**Key strategy:** Email (lowercased) for auth endpoints, `user_id` for authenticated endpoints. IP addresses are not used as rate limit keys (per Cloudflare best practices — shared IPs cause false positives).
+
+**Fail-open design:** If the rate limiting binding errors, the request is allowed through to avoid blocking legitimate traffic.
+
+**Source files:** `src/middleware/rateLimit.ts`, `src/routes/customAuth.ts`, `src/routes/apiKeySettings.ts`
 
 ### 14.3 OAUTH_KV Namespace Cleanup (Deferred)
 
