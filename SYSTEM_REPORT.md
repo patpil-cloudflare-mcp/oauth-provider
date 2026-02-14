@@ -675,6 +675,9 @@ npx wrangler d1 migrations apply mcp-oauth --remote
 | `TOKEN_DB` | D1 Database | `mcp-oauth` | Active |
 | `USER_SESSIONS` | KV Namespace | Login sessions | Active |
 | `ASSETS` | Static Assets | `./public` directory | Active |
+| `RATE_LIMIT_SEND_CODE` | Rate Limit | 5 req/60s | Active |
+| `RATE_LIMIT_VERIFY_CODE` | Rate Limit | 10 req/60s | Active |
+| `RATE_LIMIT_API_KEYS` | Rate Limit | 5 req/60s | Active |
 
 ### 13.4 Custom Domains
 
