@@ -728,9 +728,11 @@ Magic Auth emails are sent via direct REST API call (bypassing the WorkOS SDK) t
 
 **Implementation:** `src/routes/customAuth.ts` calls `POST https://api.workos.com/user_management/magic_auth` directly with `Accept-Language` header from the user's browser request.
 
-### 14.5 No JWT Audience Validation
+### 14.5 JWT Audience Validation (Implemented)
 
-The `/oauth/userinfo` endpoint validates the JWT `issuer` (`iss`) claim but does not validate the `audience` (`aud`) claim. This matches WorkOS's own example code. Can be added later if AuthKit starts including audience claims in MCP tokens.
+The `/oauth/userinfo` endpoint validates both `iss` (issuer) and `aud` (audience) JWT claims. Audience validation is conditional: WorkOS standard tokens may omit the `aud` claim, so tokens without it are accepted, but tokens with a mismatched `aud` are rejected (must include `WORKOS_CLIENT_ID`). This prevents tokens issued for other WorkOS resources from being accepted.
+
+**Source file:** `src/routes/userinfo.ts`
 
 ---
 

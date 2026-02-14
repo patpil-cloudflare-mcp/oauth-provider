@@ -10,6 +10,7 @@ import type { User } from '../types';
 interface UserinfoEnv {
   TOKEN_DB: D1Database;
   AUTHKIT_DOMAIN: string;
+  WORKOS_CLIENT_ID: string;
 }
 
 // Cache JWKS keyset per AuthKit domain (survives across requests in same isolate)
@@ -85,6 +86,20 @@ export async function handleUserInfoEndpoint(
       const { payload } = await jwtVerify(token, JWKS, {
         issuer: env.AUTHKIT_DOMAIN,
       });
+
+      // Validate audience claim if present in the JWT.
+      // WorkOS standard tokens may omit `aud`, so we only reject on mismatch.
+      if (payload.aud) {
+        const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+        if (!audiences.includes(env.WORKOS_CLIENT_ID)) {
+          console.warn(`[userinfo] JWT audience mismatch: ${JSON.stringify(payload.aud)}, expected: ${env.WORKOS_CLIENT_ID}`);
+          return jsonResponse(
+            { error: 'invalid_token', error_description: 'JWT audience mismatch' },
+            401,
+            { 'WWW-Authenticate': buildWwwAuthenticate(request, 'invalid_token', 'JWT audience mismatch') },
+          );
+        }
+      }
 
       const workosUserId = payload.sub;
       if (!workosUserId) {
