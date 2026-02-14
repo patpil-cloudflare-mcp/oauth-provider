@@ -34,7 +34,6 @@ export interface Env {
   TOKEN_DB: D1Database;
 
   // KV Namespaces
-  OAUTH_KV: KVNamespace;
   USER_SESSIONS: KVNamespace;
 
   // Static Assets

@@ -475,12 +475,7 @@ GDPR audit trail for account deletions.
 
 ## 7. KV Storage
 
-### 7.1 OAUTH_KV (Legacy)
-
-**Namespace ID:** `ed207a9e99b2420cb3c65622c1b4d6f9`
-**Status:** No longer actively used. Was used by the custom OAuth server for token/code storage. Binding retained for now; can be removed after 30+ days (to allow existing refresh tokens to expire).
-
-### 7.2 USER_SESSIONS
+### 7.1 USER_SESSIONS
 
 **Namespace ID:** `e5ad189139cd44f38ba0224c3d596c73`
 **Purpose:** User login sessions (active)
@@ -678,7 +673,6 @@ npx wrangler d1 migrations apply mcp-oauth --remote
 | Binding | Type | Resource | Status |
 |---|---|---|---|
 | `TOKEN_DB` | D1 Database | `mcp-oauth` | Active |
-| `OAUTH_KV` | KV Namespace | Legacy OAuth tokens | Legacy (can remove after 30 days) |
 | `USER_SESSIONS` | KV Namespace | Login sessions | Active |
 | `ASSETS` | Static Assets | `./public` directory | Active |
 
@@ -724,9 +718,9 @@ Rate limiting is implemented using **Cloudflare Workers Rate Limiting bindings**
 
 **Source files:** `src/middleware/rateLimit.ts`, `src/routes/customAuth.ts`, `src/routes/apiKeySettings.ts`
 
-### 14.3 OAUTH_KV Namespace Cleanup (Deferred)
+### 14.3 OAUTH_KV Namespace Removed
 
-The `OAUTH_KV` binding is no longer used by code but remains in `wrangler.toml`. It should be removed after 30+ days to allow any existing refresh tokens issued by the old OAuth server to expire.
+The legacy `OAUTH_KV` binding (used by the old custom OAuth server) has been removed from `wrangler.toml` and the `Env` interface. The KV namespace itself can be deleted from the Cloudflare dashboard when convenient.
 
 ### 14.4 Magic Auth Email Localization
 
