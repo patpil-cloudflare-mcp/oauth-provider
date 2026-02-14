@@ -277,6 +277,9 @@ export default {
         try {
           const logoutUrl = await getLogoutUrl(sessionToken, env);
 
+          // Delete session from KV immediately so the token can't be reused
+          await env.USER_SESSIONS.delete(`workos_session:${sessionToken}`);
+
           return new Response(JSON.stringify({
             success: true,
             logoutUrl,
