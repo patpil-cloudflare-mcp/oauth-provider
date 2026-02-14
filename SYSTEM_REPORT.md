@@ -566,7 +566,10 @@ The utility rejects absolute URLs, protocol-relative URLs (`//evil.com`), and ba
 
 ### 9.4 XSS Protection
 
-- **HTML escaping:** All user-controlled values rendered in HTML templates are escaped via `escapeHtml()`, including error messages from URL query parameters and `returnTo` values in form fields.
+All user-controlled values rendered in templates are escaped via shared utilities (`src/utils/escapeHtml.ts`):
+
+- **HTML context:** `escapeHtml()` applied to `user.email` in dashboard (2 places), settings (3 places), error messages from URL query params, and `returnTo` form values.
+- **JavaScript context:** `escapeJs()` applied to `user.user_id` and `user.email` embedded in `<script>` blocks (dashboard.ts, settings.ts). Prevents injection when values contain quotes or special characters.
 - **Error responses:** Internal error details (stack traces, SDK messages) are never exposed to clients. Generic error messages are returned instead.
 
 ### 9.5 Deleted User Protection
@@ -583,11 +586,13 @@ User lookup uses `workos_user_id` as the primary key (with `UNIQUE` constraint i
 ### 9.7 Cookie Security
 
 ```
-HttpOnly     → No JavaScript access (XSS protection)
-Secure       → HTTPS only
-SameSite=Lax → CSRF protection
-Domain=.wtyczki.ai → Shared across subdomains
+HttpOnly         → No JavaScript access (XSS protection)
+Secure           → HTTPS only
+SameSite=Lax     → CSRF protection
+Domain=.wtyczki.ai → Shared across subdomains (all auth paths)
 ```
+
+All session cookie `Set-Cookie` headers (Magic Auth, AuthKit callback, OAuth flows) use identical attributes including `Domain=.wtyczki.ai` to ensure consistent cross-subdomain session behavior.
 
 ### 9.8 API Key Hashing
 
@@ -599,7 +604,7 @@ Keys are hashed with SHA-256 using the Web Crypto API before storage. The plaint
 
 | Token Type | Issued By | Storage | TTL | Verification |
 |---|---|---|---|---|
-| AuthKit access token (JWT) | AuthKit | Client-side | Set by AuthKit | JWKS signature + issuer claim |
+| AuthKit access token (JWT) | AuthKit | Client-side | Set by AuthKit | JWKS signature + issuer + audience |
 | AuthKit refresh token | AuthKit | Client-side | Set by AuthKit | Sent to AuthKit `/oauth2/token` |
 | Session token | Worker | USER_SESSIONS KV | 72h | KV lookup |
 | API key | Worker | D1 (hash) | Configurable / never | SHA-256 hash match |
