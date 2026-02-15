@@ -9,7 +9,7 @@ import {
   renderDashboardPage,
   renderLogoutSuccessPage,
 } from './views';
-import { authenticateRequest } from './middleware/authMiddleware';
+import { authenticateRequest, requiresAuthentication } from './middleware/authMiddleware';
 import { safeRedirectPath } from './utils/safeRedirect';
 import {
   handleRootPath,
@@ -201,6 +201,40 @@ export default {
     }
 
     // ============================================================
+    // STATIC ASSETS - Serve images, CSS, JS from /public directory
+    // ============================================================
+
+    try {
+      const assetResponse = await env.ASSETS.fetch(request);
+      if (assetResponse.status !== 404) {
+        return assetResponse;
+      }
+    } catch (error) {
+      console.log('Asset fetch failed:', error);
+    }
+
+    // ============================================================
+    // ROOT PATH HANDLERS - Subdomain-aware routing (Public)
+    // ============================================================
+
+    const rootResponse = await handleRootPath(request);
+    if (rootResponse) {
+      return rootResponse;
+    }
+
+    // ============================================================
+    // LEGAL PAGES (Public)
+    // ============================================================
+
+    if (url.pathname === '/privacy') {
+      return await handlePrivacyPolicy();
+    }
+
+    if (url.pathname === '/terms') {
+      return await handleTermsOfService();
+    }
+
+    // ============================================================
     // AUTHENTICATION MIDDLEWARE FOR PROTECTED ROUTES
     // ============================================================
 
@@ -211,8 +245,12 @@ export default {
     }
 
     // Guard: if route required auth but no user, return 401
+    // Non-protected routes that reach here are unknown — return 404
     if (!authenticatedUser) {
-      return new Response('Unauthorized', { status: 401 });
+      if (requiresAuthentication(url.pathname)) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      return new Response('Not found', { status: 404 });
     }
 
     // ============================================================
@@ -318,40 +356,6 @@ export default {
           'Set-Cookie': 'workos_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
         }
       });
-    }
-
-    // ============================================================
-    // STATIC ASSETS - Serve images, CSS, JS from /public directory
-    // ============================================================
-
-    try {
-      const assetResponse = await env.ASSETS.fetch(request);
-      if (assetResponse.status !== 404) {
-        return assetResponse;
-      }
-    } catch (error) {
-      console.log('Asset fetch failed:', error);
-    }
-
-    // ============================================================
-    // ROOT PATH HANDLERS - Subdomain-aware routing
-    // ============================================================
-
-    const rootResponse = await handleRootPath(request);
-    if (rootResponse) {
-      return rootResponse;
-    }
-
-    // ============================================================
-    // LEGAL PAGES
-    // ============================================================
-
-    if (url.pathname === '/privacy') {
-      return await handlePrivacyPolicy();
-    }
-
-    if (url.pathname === '/terms') {
-      return await handleTermsOfService();
     }
 
     return new Response('Not found', { status: 404 });
