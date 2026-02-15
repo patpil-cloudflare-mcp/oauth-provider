@@ -102,19 +102,14 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       console.log(`✅ [custom-auth] Login - user found: ${existingUser.user_id}`);
     }
 
-    // Send Magic Auth code via WorkOS REST API directly
-    // (bypassing SDK to forward Accept-Language header for Polish emails)
-    console.log(`🔄 [custom-auth] Sending Magic Auth code to: ${email}`);
-
-    const acceptLanguage = request.headers.get('Accept-Language') || 'pl';
-    console.log(`🌐 [custom-auth] Forwarding Accept-Language: ${acceptLanguage}`);
+    // Create Magic Auth code via WorkOS API
+    console.log(`🔄 [custom-auth] Creating Magic Auth code for: ${email}`);
 
     const magicAuthResponse = await fetch('https://api.workos.com/user_management/magic_auth', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${env.WORKOS_API_KEY}`,
-        'Accept-Language': acceptLanguage,
       },
       body: JSON.stringify({ email }),
     });
@@ -134,10 +129,9 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
     };
 
     console.log(`✅ [custom-auth] Magic Auth code created: ${magicAuth.id}`);
-    console.log(`   Code expires at: ${magicAuth.expires_at}`);
-    if (!magicAuth.user_id) {
-      console.warn(`[custom-auth] Magic Auth created without user_id - email may not be delivered. Check WorkOS email domain configuration.`);
-    }
+
+    // Send verification code email in Polish via Resend
+    await sendVerificationEmail(env.RESEND_API_KEY, email, magicAuth.code);
 
     // Show code input form with return_to parameter
     // Generate new CSRF token for code verification form
@@ -257,16 +251,6 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
     console.log(`✅ [custom-auth] WorkOS authentication successful: ${workosUser.email}`);
     console.log(`   WorkOS user ID: ${workosUser.id}`);
 
-    // Ensure Polish locale is set on WorkOS user profile
-    try {
-      await workos.userManagement.updateUser({
-        userId: workosUser.id,
-        locale: 'pl',
-      });
-    } catch (localeError) {
-      console.warn(`[custom-auth] Failed to set locale for user ${workosUser.id}:`, localeError);
-    }
-
     // Load user from D1 database
     // Primary lookup: by workos_user_id (handles email changes in WorkOS)
     let dbUser = await env.TOKEN_DB.prepare(`
@@ -380,4 +364,54 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
       }
     });
   }
+}
+
+/**
+ * Send verification code email in Polish via Resend API.
+ * Throws on failure so the caller can show an error to the user.
+ */
+async function sendVerificationEmail(apiKey: string, to: string, code: string): Promise<void> {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      from: 'wtyczki.ai <noreply@wtyczki.ai>',
+      to,
+      subject: `${code} — kod logowania do wtyczki.ai`,
+      html: `
+<div style="font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#222b4f">
+  <div style="text-align:center;margin-bottom:24px">
+    <h2 style="font-size:22px;font-weight:700;margin:0">Logowanie do wtyczki.ai</h2>
+  </div>
+  <p style="font-size:15px;line-height:1.6;margin:0 0 24px">
+    Otrzymaliśmy prośbę o zalogowanie się na konto powiązane z adresem <strong>${to}</strong>.
+    Użyj poniższego kodu, aby dokończyć logowanie:
+  </p>
+  <div style="text-align:center;margin:0 0 24px">
+    <span style="display:inline-block;font-size:36px;font-weight:700;letter-spacing:8px;background:#f0f1fe;color:#3239e5;padding:16px 32px;border-radius:12px">${code}</span>
+  </div>
+  <p style="font-size:14px;color:#666;line-height:1.6;margin:0 0 8px">
+    Kod wygasa za <strong>10 minut</strong>.
+  </p>
+  <p style="font-size:14px;color:#666;line-height:1.6;margin:0">
+    Jeśli nie próbujesz się zalogować, zignoruj tę wiadomość.
+  </p>
+  <hr style="border:none;border-top:1px solid #eff4f7;margin:32px 0 16px">
+  <p style="font-size:12px;color:#999;text-align:center;margin:0">
+    wtyczki.ai — Panel klienta
+  </p>
+</div>`,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`[custom-auth] Resend email failed (${res.status}): ${errorText}`);
+    throw new Error(`Email sending failed: ${res.status}`);
+  }
+
+  console.log(`✅ [custom-auth] Verification email sent via Resend to: ${to}`);
 }

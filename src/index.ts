@@ -47,6 +47,9 @@ export interface Env {
   // AuthKit MCP Auth
   AUTHKIT_DOMAIN: string;
 
+  // Resend (transactional email)
+  RESEND_API_KEY: string;
+
   // Rate Limiting
   RATE_LIMIT_SEND_CODE: RateLimit;
   RATE_LIMIT_VERIFY_CODE: RateLimit;
