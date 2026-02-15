@@ -135,6 +135,9 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
 
     console.log(`✅ [custom-auth] Magic Auth code created: ${magicAuth.id}`);
     console.log(`   Code expires at: ${magicAuth.expires_at}`);
+    if (!magicAuth.user_id) {
+      console.warn(`[custom-auth] Magic Auth created without user_id - email may not be delivered. Check WorkOS email domain configuration.`);
+    }
 
     // Show code input form with return_to parameter
     // Generate new CSRF token for code verification form

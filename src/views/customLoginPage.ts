@@ -491,7 +491,7 @@ export function renderLoginCodeForm(
     </div>
 
     <div class="footer">
-      Nie otrzymałeś kodu? <a href="/auth/login-custom">Wyślij ponownie</a>
+      Nie otrzymałeś kodu? <a href="/?tab=login">Wyślij ponownie</a>
     </div>
   </div>
 </body>
