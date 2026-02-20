@@ -410,7 +410,7 @@ export function renderSettingsPage(user: User): string {
     <!-- API Keys Section -->
     <div class="info-card">
       <h2 class="section-title">🔑 Klucze API</h2>
-      <p class="info-subtitle">Twórz stałe klucze API do używania serwerów MCP w narzędziach takich jak AnythingLLM, Cursor lub własne integracje.</p>
+      <p class="info-subtitle">Twórz stałe klucze API do używania serwerów MCP w narzędziach takich jak Cursor, Windsur, LM Studio lub własne integracje.</p>
 
       <div class="warning-box" style="margin: 16px 0; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px;">
         <strong>⚠️ Ważne</strong>

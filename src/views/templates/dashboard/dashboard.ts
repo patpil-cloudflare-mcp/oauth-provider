@@ -487,6 +487,7 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
           + Utwórz klucz
         </button>
       </div>
+      <p style="margin: 8px 16px 0; font-size: 13px; color: #6b7280;">W większości przypadków nie musisz generować kluczy API, jeśli używasz wtyczek AI (serwerów MCP) w ChatGPT, Claude, Alice.</p>
       <table class="api-keys-table">
         <thead>
           <tr>
