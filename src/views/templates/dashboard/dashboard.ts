@@ -406,6 +406,47 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
       text-decoration: underline;
     }
 
+    /* Guide Banner */
+    .guide-banner {
+      background: #f5f3ff;
+      border: 1px solid #e9d5ff;
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .guide-banner-text {
+      font-size: 15px;
+      color: #222b4f;
+    }
+    .guide-banner-text strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .guide-banner-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #7a0bc0 0%, #b2478f 100%);
+      color: white;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .guide-banner-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(122, 11, 192, 0.35);
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       body { padding: 12px; }
@@ -420,6 +461,10 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
       .header-right {
         flex-wrap: wrap;
         justify-content: center;
+      }
+      .guide-banner {
+        flex-direction: column;
+        text-align: center;
       }
       .card { padding: 20px; }
       .card-header {
@@ -474,6 +519,17 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
           <div class="account-value">${formatDate(user.last_login_at)}</div>
         </div>
       </div>
+    </div>
+
+    <!-- MCP Guide Banner -->
+    <div class="guide-banner">
+      <div class="guide-banner-text">
+        <strong>Nie wiesz jak zacząć?</strong>
+        Sprawdź jak zainstalować i używać wtyczek AI (serwerów MCP) krok po kroku.
+      </div>
+      <a href="https://wtyczki.ai/jak-zainstalowac-i-pracowac-z-mcp-szybki-poradnik/" target="_blank" rel="noopener noreferrer" class="guide-banner-btn">
+        Poradnik instalacji MCP
+      </a>
     </div>
 
     <!-- API Keys Card -->
