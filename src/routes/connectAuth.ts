@@ -66,7 +66,18 @@ export async function handleConnectLogin(request: Request, env: Env): Promise<Re
     if (!completionResponse.ok) {
       const errorText = await completionResponse.text();
       console.error(`[connect-auth] Completion API failed (${completionResponse.status}): ${errorText}`);
-      return new Response('Authentication completion failed', { status: 502 });
+      return new Response(`<!DOCTYPE html>
+<html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Błąd połączenia - wtyczki.ai</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',-apple-system,sans-serif;background:#feffff;color:#222b4f;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}.card{max-width:440px;background:#fff;border:2px solid #eff4f7;border-radius:16px;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.1);text-align:center}h1{font-size:22px;margin-bottom:12px}p{color:rgba(34,43,79,.65);line-height:1.6;margin-bottom:20px}a{display:inline-block;padding:12px 24px;background:#3239e5;color:#fff;text-decoration:none;border-radius:8px;font-weight:600}a:hover{background:#140f44}</style>
+</head><body><div class="card">
+<h1>Link autoryzacyjny wygasł</h1>
+<p>Sesja połączenia z aplikacją (Claude, ChatGPT) wygasła. Wróć do aplikacji i spróbuj połączyć się ponownie.</p>
+<a href="/dashboard">Przejdź do panelu</a>
+</div></body></html>`, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
     }
 
     const { redirect_uri } = await completionResponse.json() as { redirect_uri: string };

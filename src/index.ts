@@ -231,10 +231,12 @@ export default {
       if (sessionToken) {
         const sessionResult = await validateSession(sessionToken, env);
         if (sessionResult.success && sessionResult.user) {
+          // Respect return_to param (e.g. OAuth connect-login flow)
+          const returnTo = safeRedirectPath(url.searchParams.get('return_to') || '/dashboard');
           return new Response(null, {
             status: 302,
             headers: {
-              'Location': '/dashboard',
+              'Location': returnTo,
               'Cache-Control': 'no-store',
             },
           });

@@ -1,4 +1,5 @@
 // src/views/customLoginPage.ts - Custom Magic Auth Login UI
+import { escapeHtml } from '../utils/escapeHtml';
 
 export function renderLoginEmailForm(
   error?: string,
@@ -211,7 +212,7 @@ export function renderLoginEmailForm(
 
       <form method="POST" action="/auth/login-custom/send-code">
         <input type="hidden" name="csrf_token" value="${csrfToken}" />
-        <input type="hidden" name="return_to" value="${returnTo}" />
+        <input type="hidden" name="return_to" value="${escapeHtml(returnTo)}" />
         <input type="hidden" name="mode" value="login" />
 
         <div class="form-group">
@@ -468,7 +469,7 @@ export function renderLoginCodeForm(
       <form method="POST" action="/auth/login-custom/verify-code">
         <input type="hidden" name="csrf_token" value="${csrfToken}" />
         <input type="hidden" name="email" value="${email}" />
-        <input type="hidden" name="return_to" value="${returnTo}" />
+        <input type="hidden" name="return_to" value="${escapeHtml(returnTo)}" />
 
         <div class="form-group">
           <label for="code">6-cyfrowy kod</label>
@@ -491,7 +492,7 @@ export function renderLoginCodeForm(
     </div>
 
     <div class="footer">
-      Nie otrzymałeś kodu? <a href="/?tab=login">Wyślij ponownie</a>
+      Nie otrzymałeś kodu? <a href="/?tab=login${returnTo !== '/dashboard' ? '&return_to=' + encodeURIComponent(returnTo) : ''}">Wyślij ponownie</a>
     </div>
   </div>
 </body>
