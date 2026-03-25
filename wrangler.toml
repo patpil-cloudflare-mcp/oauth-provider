@@ -7,6 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 [assets]
 directory = "./public"
 binding = "ASSETS"
+run_worker_first = true
 
 # Custom Domains - Modern approach (replaces manual AAAA 100:: DNS records)
 # Cloudflare automatically creates and manages DNS records and certificates

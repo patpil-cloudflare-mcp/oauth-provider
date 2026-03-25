@@ -52,11 +52,17 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
   const sessionToken = getSessionTokenFromRequest(request);
 
   if (!sessionToken) {
-    // No session - redirect to login
+    // No session - redirect to login (Cache-Control prevents browser caching this redirect)
     const returnUrl = encodeURIComponent(url.pathname + url.search);
     return {
       user: null,
-      response: Response.redirect(`${url.origin}/auth/login?return_to=${returnUrl}`, 302)
+      response: new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${url.origin}/auth/login?return_to=${returnUrl}`,
+          'Cache-Control': 'no-store',
+        },
+      })
     };
   }
 
@@ -68,7 +74,13 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
     const returnUrl = encodeURIComponent(url.pathname + url.search);
     return {
       user: null,
-      response: Response.redirect(`${url.origin}/auth/login?return_to=${returnUrl}`, 302)
+      response: new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${url.origin}/auth/login?return_to=${returnUrl}`,
+          'Cache-Control': 'no-store',
+        },
+      })
     };
   }
 

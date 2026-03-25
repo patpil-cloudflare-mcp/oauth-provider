@@ -4,6 +4,7 @@ import {
   handleCallback,
   getLogoutUrl,
   getSessionTokenFromRequest,
+  validateSession,
 } from './workos-auth';
 import {
   renderDashboardPage,
@@ -124,9 +125,15 @@ export default {
     // ============================================================
 
     // WorkOS Login endpoint - Redirect to unified auth page
+    // MUST be 302 (not 301) — 301 is cached permanently by browsers, breaking return_to
     if (url.pathname === '/auth/login' && request.method === 'GET') {
       const baseUrl = url.origin;
-      return Response.redirect(`${baseUrl}/?tab=login`, 301);
+      const returnTo = url.searchParams.get('return_to');
+      const params = new URLSearchParams({ tab: 'login' });
+      if (returnTo) {
+        params.set('return_to', returnTo);
+      }
+      return Response.redirect(`${baseUrl}/?${params.toString()}`, 302);
     }
 
     // WorkOS Callback endpoint - Handle redirect from WorkOS
@@ -216,7 +223,24 @@ export default {
 
     // ============================================================
     // ROOT PATH HANDLERS - Subdomain-aware routing (Public)
+    // If user already has a valid session, redirect to dashboard
     // ============================================================
+
+    if (url.pathname === '/' || url.pathname === '') {
+      const sessionToken = getSessionTokenFromRequest(request);
+      if (sessionToken) {
+        const sessionResult = await validateSession(sessionToken, env);
+        if (sessionResult.success && sessionResult.user) {
+          return new Response(null, {
+            status: 302,
+            headers: {
+              'Location': '/dashboard',
+              'Cache-Control': 'no-store',
+            },
+          });
+        }
+      }
+    }
 
     const rootResponse = await handleRootPath(request);
     if (rootResponse) {
