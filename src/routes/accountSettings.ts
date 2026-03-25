@@ -10,8 +10,6 @@ import { renderSettingsPage } from '../views';
  * @returns Response with settings page HTML
  */
 export async function handleSettingsPage(user: User): Promise<Response> {
-  console.log(`⚙️  [settings] Rendering settings page for user: ${user.user_id}`);
-
   return new Response(renderSettingsPage(user), {
     status: 200,
     headers: { 'Content-Type': 'text/html' }

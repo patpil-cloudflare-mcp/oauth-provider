@@ -36,7 +36,7 @@ export async function handleCreateApiKey(
   // Rate limit: max 5 requests per 60s per user
   const withinLimit = await checkRateLimit(env.RATE_LIMIT_API_KEYS, `api-keys:${user.user_id}`);
   if (!withinLimit) {
-    console.warn(`⚠️ [rate-limit] api-keys rate limit exceeded for user: ${user.user_id}`);
+    console.warn(`[rate-limit] api-keys exceeded for user: ${user.user_id}`);
     return rateLimitJsonResponse('Too many requests. Please wait a minute and try again.');
   }
 
@@ -101,7 +101,6 @@ export async function handleCreateApiKey(
       body.expiresInDays
     );
 
-    console.log(`✅ [API Endpoints] Created API key for user ${user.user_id}: ${name}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -120,7 +119,7 @@ export async function handleCreateApiKey(
     });
 
   } catch (error) {
-    console.error('❌ [API Endpoints] Create key error:', error);
+    console.error('[API Endpoints] Create key error:', error);
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to create API key'
@@ -179,7 +178,7 @@ export async function handleListApiKeys(
     });
 
   } catch (error) {
-    console.error('❌ [API Endpoints] List keys error:', error);
+    console.error('[API Endpoints] List keys error:', error);
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to list API keys'
@@ -219,7 +218,6 @@ export async function handleRevokeApiKey(
       });
     }
 
-    console.log(`✅ [API Endpoints] Revoked API key ${apiKeyId} for user ${user.user_id}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -230,7 +228,7 @@ export async function handleRevokeApiKey(
     });
 
   } catch (error) {
-    console.error('❌ [API Endpoints] Revoke key error:', error);
+    console.error('[API Endpoints] Revoke key error:', error);
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to revoke API key'

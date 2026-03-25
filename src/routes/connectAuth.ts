@@ -25,17 +25,13 @@ export async function handleConnectLogin(request: Request, env: Env): Promise<Re
   const externalAuthId = url.searchParams.get('external_auth_id');
 
   if (!externalAuthId) {
-    console.error('[connect-auth] Missing external_auth_id parameter');
     return new Response('Missing external_auth_id parameter', { status: 400 });
   }
-
-  console.log(`[connect-auth] Received external_auth_id: ${externalAuthId.substring(0, 12)}...`);
 
   // Check for existing session
   const sessionToken = getSessionTokenFromRequest(request);
 
   if (!sessionToken) {
-    console.log('[connect-auth] No session found, redirecting to login');
     return redirectToLogin(url, externalAuthId);
   }
 
@@ -43,16 +39,12 @@ export async function handleConnectLogin(request: Request, env: Env): Promise<Re
   const sessionData = await env.USER_SESSIONS.get(`workos_session:${sessionToken}`, 'json') as KVSession | null;
 
   if (!sessionData || sessionData.expires_at < Date.now()) {
-    console.log('[connect-auth] Session expired or invalid, redirecting to login');
     return redirectToLogin(url, externalAuthId);
   }
 
   if (!sessionData.workos_user_id) {
-    console.error('[connect-auth] Session missing workos_user_id, redirecting to login');
     return redirectToLogin(url, externalAuthId);
   }
-
-  console.log(`[connect-auth] Active session found for: ${sessionData.email}`);
 
   // Call AuthKit completion API
   try {
@@ -78,8 +70,6 @@ export async function handleConnectLogin(request: Request, env: Env): Promise<Re
     }
 
     const { redirect_uri } = await completionResponse.json() as { redirect_uri: string };
-
-    console.log(`[connect-auth] Completion successful, redirecting to AuthKit`);
 
     return new Response(null, {
       status: 302,

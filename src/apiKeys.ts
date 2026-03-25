@@ -105,7 +105,6 @@ export async function generateApiKey(
     record.is_active
   ).run();
 
-  console.log(`✅ [API Keys] Generated key for user ${userId}: ${keyPrefix}...`);
 
   return {
     apiKey: apiKey, // Return plaintext ONCE
@@ -132,7 +131,6 @@ export async function validateApiKey(
 ): Promise<string | null> {
   // Validate format
   if (!apiKey.startsWith('wtyk_') || apiKey.length !== 69) {
-    console.log('⚠️ [API Keys] Invalid format');
     return null;
   }
 
@@ -152,19 +150,16 @@ export async function validateApiKey(
   `).bind(apiKeyHash).first<ApiKey>();
 
   if (!keyRecord) {
-    console.log('⚠️ [API Keys] Key not found');
     return null;
   }
 
   // Check if key is active
   if (keyRecord.is_active !== 1) {
-    console.log('⚠️ [API Keys] Key is revoked:', keyRecord.api_key_id);
     return null;
   }
 
   // Check expiration
   if (keyRecord.expires_at && keyRecord.expires_at < Date.now()) {
-    console.log('⚠️ [API Keys] Key expired:', keyRecord.api_key_id);
     return null;
   }
 
@@ -174,7 +169,6 @@ export async function validateApiKey(
   `).bind(keyRecord.user_id).first<{ is_deleted: number }>();
 
   if (!user || user.is_deleted === 1) {
-    console.log('⚠️ [API Keys] User not found or deleted:', keyRecord.user_id);
     return null;
   }
 
@@ -187,16 +181,14 @@ export async function validateApiKey(
     `).bind(Date.now(), keyRecord.api_key_id).run();
 
     if (updateResult.meta.changes === 0) {
-      console.warn('⚠️ [API Keys] Failed to update last_used_at - key may have been revoked');
       // Still allow the request to proceed since key was valid at time of lookup
     }
   } catch (err) {
-    console.error('❌ [API Keys] Error updating last_used_at:', err);
+    console.error('[API Keys] Error updating last_used_at:', err);
     // Continue anyway - authentication was successful, timestamp update is non-critical
     // This prevents temporary DB issues from blocking valid API requests
   }
 
-  console.log(`✅ [API Keys] Valid key for user ${keyRecord.user_id}`);
   return keyRecord.user_id;
 }
 
@@ -249,11 +241,8 @@ export async function revokeApiKey(
   `).bind(apiKeyId, userId).run();
 
   if (result.meta.changes === 0) {
-    console.log('⚠️ [API Keys] Key not found or not owned by user:', apiKeyId);
     return false;
   }
-
-  console.log(`✅ [API Keys] Revoked key ${apiKeyId} for user ${userId}`);
   return true;
 }
 
@@ -272,7 +261,6 @@ export async function deleteAllUserApiKeys(
     DELETE FROM api_keys WHERE user_id = ?
   `).bind(userId).run();
 
-  console.log(`✅ [API Keys] Deleted ${result.meta.changes} keys for user ${userId}`);
   return result.meta.changes || 0;
 }
 

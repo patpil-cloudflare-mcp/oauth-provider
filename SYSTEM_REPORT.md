@@ -3,7 +3,7 @@
 **Project**: mcp-oauth — MCP Authentication via WorkOS AuthKit
 **Platform**: Cloudflare Workers (Serverless Edge Computing)
 **Domains**: `panel.wtyczki.ai` (Dashboard), `api.wtyczki.ai` (API)
-**Last Updated**: 2026-02-14
+**Last Updated**: 2026-02-16
 
 ---
 
@@ -52,7 +52,7 @@ The system delegates all OAuth 2.1 authorization (authorization codes, tokens, P
 │    or custom via Connect) │  │        │              │           │
 │                           │  │  ┌─────┴──────────────┴────────┐ │
 │  Domain:                  │  │  │      Authentication Layer     │ │
-│  exciting-domain-65       │  │  │  WorkOS Magic Auth + Sessions │ │
+│  exciting-domain-65       │  │  WorkOS Magic Auth + Resend Email│ │
 │  .authkit.app             │  │  └─────┬──────────────┬────────┘ │
 └──────────────────────────┘  │        │              │           │
                                │  ┌─────▼────┐  ┌─────▼──────┐   │
@@ -72,6 +72,7 @@ The system delegates all OAuth 2.1 authorization (authorization codes, tokens, P
 | KV Storage | Cloudflare KV (2 namespaces) |
 | Authorization Server | WorkOS AuthKit (OAuth 2.1, PKCE, DCR, CIMD) |
 | Auth Provider | WorkOS (Magic Auth + AuthKit) |
+| Transactional Email | Resend API (Polish verification emails) |
 | Static Assets | Cloudflare Workers Assets |
 | JWT Library | jose (verification via JWKS + decoding) |
 | WorkOS SDK | @workos-inc/node v8 |
@@ -102,8 +103,10 @@ POST /auth/login-custom/send-code
          ├── Check user does NOT exist in D1 → reject if exists
          ├── INSERT new user into D1 (users table)
          ├── Call WorkOS REST API: POST /user_management/magic_auth
-         │   → Forwards browser Accept-Language header (fallback: pl)
-         │   → WorkOS sends 6-digit code to email in user's language
+         │   → Creates Magic Auth challenge, returns code in response
+         ├── Send verification email via Resend API
+         │   → Custom Polish HTML email with branded template
+         │   → From: noreply@wtyczki.ai, subject includes code
          └── Return code input form (with new CSRF token)
                   │
                   │ User enters 6-digit code
@@ -114,7 +117,7 @@ POST /auth/login-custom/verify-code
          ├── Validate code format (6 digits)
          ├── Call WorkOS: authenticateWithMagicAuth({ code, email })
          │   → Returns workosUser, accessToken, refreshToken
-         ├── Lookup user by workos_user_id first, then email
+         ├── Lookup user by workos_user_id first, fallback to email
          ├── UPDATE user in D1 (email synced, last_login_at, workos_user_id)
          ├── Generate session token (UUID)
          ├── Store session in KV (USER_SESSIONS) with 72h TTL
@@ -618,7 +621,7 @@ Keys are hashed with SHA-256 using the Web Crypto API before storage. The plaint
 ```
 1. Visit panel.wtyczki.ai → See unified auth page
 2. Switch to "Register" tab
-3. Enter email → Receive 6-digit code via email
+3. Enter email → Receive 6-digit code via Resend (Polish email)
 4. Enter code → Account created, redirected to dashboard
 5. Dashboard shows: welcome message, empty API keys list
 6. (Optional) Create API key for an MCP client
@@ -636,7 +639,7 @@ Keys are hashed with SHA-256 using the Web Crypto API before storage. The plaint
 7. AuthKit redirects to custom Login URI (/auth/connect-login)
 8a. If user has active session → completion API called → skip to step 10
 8b. If no session → user sees custom Magic Auth login page
-9. User enters email → receives Polish code → verifies code → session created
+9. User enters email → receives Polish verification email via Resend → verifies code → session created
    → redirected back to /auth/connect-login → completion API called
 10. AuthKit handles consent and issues access token (JWT) + refresh token
 11. MCP client calls /oauth/userinfo with Bearer JWT
@@ -687,6 +690,7 @@ npx wrangler d1 migrations apply mcp-oauth --remote
 | `WORKOS_API_KEY` | Cloudflare secret | WorkOS API authentication |
 | `WORKOS_CLIENT_ID` | Cloudflare secret | WorkOS OAuth client identifier |
 | `AUTHKIT_DOMAIN` | Cloudflare secret | AuthKit domain (`https://exciting-domain-65.authkit.app`) |
+| `RESEND_API_KEY` | Cloudflare secret | Resend API key for sending verification emails |
 | `OAUTH_BASE_URL` | wrangler.toml vars | `https://panel.wtyczki.ai` |
 
 ### 13.3 Bindings
@@ -716,7 +720,7 @@ npx wrangler d1 migrations apply mcp-oauth --remote
 | Client ID Metadata Document | Enabled |
 | Login URI (Standalone Connect) | `https://panel.wtyczki.ai/auth/connect-login` |
 | Logout URI | `https://panel.wtyczki.ai/auth/logout-success` |
-| Localization | Enabled, fallback language: Polish (`pl`) |
+| Email delivery | Handled by Resend (WorkOS default emails bypassed) |
 
 ---
 
@@ -746,11 +750,28 @@ Rate limiting is implemented using **Cloudflare Workers Rate Limiting bindings**
 
 The legacy `OAUTH_KV` binding (used by the old custom OAuth server) has been removed from `wrangler.toml` and the `Env` interface. The KV namespace itself can be deleted from the Cloudflare dashboard when convenient.
 
-### 14.4 Magic Auth Email Localization
+### 14.4 Magic Auth Email Delivery via Resend
 
-Magic Auth emails are sent via direct REST API call (bypassing the WorkOS SDK) to forward the user's browser `Accept-Language` header. This ensures WorkOS sends the email in the user's language (with Polish as the fallback). The SDK's `createMagicAuth()` method does not support passing custom headers.
+Verification code emails are **not sent by WorkOS**. Instead, the system uses **Resend API** to send custom-branded Polish emails:
 
-**Implementation:** `src/routes/customAuth.ts` calls `POST https://api.workos.com/user_management/magic_auth` directly with `Accept-Language` header from the user's browser request.
+1. WorkOS `POST /user_management/magic_auth` creates the Magic Auth challenge and returns the 6-digit `code` in the API response
+2. The Worker sends the code to the user via Resend API (`POST https://api.resend.com/emails`)
+3. WorkOS's default English email delivery is effectively bypassed
+
+**Why Resend instead of WorkOS emails:**
+- WorkOS Magic Auth emails are English-only (the `Accept-Language` header and `updateUser({ locale })` approaches were tested and confirmed to have no effect)
+- Resend allows full control over email content, language, and branding
+- Custom HTML template with Polish copy, branded styling, and logo
+
+**Email details:**
+- **From:** `wtyczki.ai <noreply@wtyczki.ai>`
+- **Subject:** `{code} — kod logowania do wtyczki.ai`
+- **Content:** Polish HTML email with verification code, 10-minute expiry notice
+- **Logo:** `https://panel.wtyczki.ai/logo-email.png`
+
+**Environment variable:** `RESEND_API_KEY` (Cloudflare secret)
+
+**Source file:** `src/routes/customAuth.ts` — `sendVerificationEmail()` function
 
 ### 14.5 JWT Audience Validation (Implemented)
 
@@ -760,5 +781,5 @@ The `/oauth/userinfo` endpoint validates both `iss` (issuer) and `aud` (audience
 
 ---
 
-*Report generated: 2026-02-14*
-*Source: Full codebase analysis of mcp-oauth repository after AuthKit MCP Auth migration + Standalone Connect*
+*Report generated: 2026-02-16*
+*Source: Full codebase analysis of mcp-oauth repository after AuthKit MCP Auth migration + Standalone Connect + Resend email integration*

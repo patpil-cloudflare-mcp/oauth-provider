@@ -8,6 +8,7 @@ import {
 import {
   renderDashboardPage,
   renderLogoutSuccessPage,
+  renderPricingPage,
 } from './views';
 import { authenticateRequest, requiresAuthentication } from './middleware/authMiddleware';
 import { safeRedirectPath } from './utils/safeRedirect';
@@ -54,6 +55,9 @@ export interface Env {
   RATE_LIMIT_SEND_CODE: RateLimit;
   RATE_LIMIT_VERIFY_CODE: RateLimit;
   RATE_LIMIT_API_KEYS: RateLimit;
+
+  // Service Binding to mcp-token-system
+  BILLING_API: Fetcher;
 }
 
 export default {
@@ -121,7 +125,6 @@ export default {
 
     // WorkOS Login endpoint - Redirect to unified auth page
     if (url.pathname === '/auth/login' && request.method === 'GET') {
-      console.log('Redirecting to unified auth page');
       const baseUrl = url.origin;
       return Response.redirect(`${baseUrl}/?tab=login`, 301);
     }
@@ -132,17 +135,12 @@ export default {
         const code = url.searchParams.get('code');
         const state = safeRedirectPath(url.searchParams.get('state') || '/dashboard');
 
-        console.log(`[workos] Callback received, state: ${state}`);
-
         if (!code) {
-          console.error('[workos] Missing authorization code');
           return new Response('Missing authorization code', { status: 400 });
         }
 
         // Exchange code for user session
         const { user, sessionToken } = await handleCallback(code, env);
-
-        console.log(`[workos] User authenticated: ${user.email}`);
 
         // Set session cookie
         const headers = new Headers();
@@ -154,7 +152,7 @@ export default {
           headers,
         });
       } catch (error) {
-        console.error('[workos] Callback failed:', error);
+        console.error('[workos] Callback error:', error);
         return new Response('Authentication failed. Please try again.', { status: 500 });
       }
     }
@@ -212,8 +210,8 @@ export default {
       if (assetResponse.status !== 404) {
         return assetResponse;
       }
-    } catch (error) {
-      console.log('Asset fetch failed:', error);
+    } catch {
+      // Asset not found, continue to routing
     }
 
     // ============================================================
@@ -223,6 +221,17 @@ export default {
     const rootResponse = await handleRootPath(request);
     if (rootResponse) {
       return rootResponse;
+    }
+
+    // ============================================================
+    // PRICING PAGE (Public)
+    // ============================================================
+
+    if (url.pathname === '/pricing' && request.method === 'GET') {
+      return new Response(renderPricingPage(), {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
     }
 
     // ============================================================
@@ -304,6 +313,70 @@ export default {
     }
 
     // ============================================================
+    // BILLING PROXY (forwards to api.wtyczki.ai server-side)
+    // Avoids cross-origin issues with SameSite=Lax cookies
+    // ============================================================
+
+    if (url.pathname.startsWith('/api/billing/')) {
+      const billingPath = url.pathname.replace('/api/billing', '');
+
+      const pathMap: Record<string, string> = {
+        '/user': '/auth/user',
+        '/transactions': '/user/transactions',
+        '/checkout': '/checkout/create',
+      };
+
+      const targetPath = pathMap[billingPath];
+      if (!targetPath) {
+        return new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Use Service Binding (env.BILLING_API.fetch) — direct Worker-to-Worker, no HTTP overhead
+      // Per CF docs: domain in URL is ignored, only path matters
+      const queryString = billingPath === '/transactions' ? url.search : '';
+      const serviceUrl = `https://billing.internal${targetPath}${queryString}`;
+      const sessionToken = getSessionTokenFromRequest(request);
+
+      try {
+        // Build body for POST from known data (avoids reading request body stream)
+        let proxyBody: string | undefined;
+        if (request.method === 'POST' && billingPath === '/checkout') {
+          const priceId = url.searchParams.get('priceId') || '';
+          proxyBody = JSON.stringify({
+            userId: authenticatedUser!.user_id,
+            priceId,
+          });
+        }
+
+        const billingResponse = await env.BILLING_API.fetch(serviceUrl, {
+          method: request.method,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(sessionToken ? { 'Cookie': `workos_session=${sessionToken}` } : {}),
+          },
+          body: proxyBody,
+        });
+
+        const body = await billingResponse.text();
+
+        return new Response(body || JSON.stringify({ error: 'Empty response' }), {
+          status: billingResponse.status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[billing-proxy] Service binding failed: ${errMsg}`);
+        return new Response(JSON.stringify({ error: 'Billing service unavailable', detail: errMsg }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // ============================================================
     // API KEY MANAGEMENT ENDPOINTS
     // ============================================================
 
@@ -341,7 +414,7 @@ export default {
             status: 200,
             headers: {
               'Content-Type': 'application/json',
-              'Set-Cookie': 'workos_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
+              'Set-Cookie': 'workos_session=; Domain=.wtyczki.ai; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
             }
           });
         } catch (error) {
@@ -356,7 +429,7 @@ export default {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Set-Cookie': 'workos_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
+          'Set-Cookie': 'workos_session=; Domain=.wtyczki.ai; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
         }
       });
     }

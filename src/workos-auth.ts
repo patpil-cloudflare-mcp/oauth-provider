@@ -61,7 +61,6 @@ export async function getAuthorizationUrl(
   // Append Polish locale (not supported in SDK interface, safe to add as query param)
   const localizedUrl = `${authorizationUrl}&locale=pl`;
 
-  console.log('🔐 [workos] Generated authorization URL with locale=pl');
   return localizedUrl;
 }
 
@@ -80,16 +79,11 @@ export async function handleCallback(
 ): Promise<{ user: User; sessionToken: string }> {
   const workos = new WorkOS(env.WORKOS_API_KEY);
 
-  console.log('🔄 [workos] Exchanging authorization code for user profile');
-
   // Exchange authorization code for authenticated user
   const { user: workosUser, accessToken, refreshToken } = await workos.userManagement.authenticateWithCode({
     clientId: env.WORKOS_CLIENT_ID,
     code,
   });
-
-  console.log(`✅ [workos] Authenticated user: ${workosUser.email}`);
-  console.log(`   WorkOS user ID: ${workosUser.id}`);
 
   // Set Polish locale on WorkOS user profile
   try {
@@ -97,9 +91,8 @@ export async function handleCallback(
       userId: workosUser.id,
       locale: 'pl',
     });
-    console.log(`🌐 [workos] Set locale=pl for user: ${workosUser.id}`);
   } catch (localeError) {
-    console.warn(`[workos] Failed to set locale:`, localeError);
+    console.warn('[workos] Failed to set locale:', localeError);
   }
 
   // Get or create user in our database
@@ -125,8 +118,6 @@ export async function handleCallback(
     { expirationTtl: 259200 } // 72 hours
   );
 
-  console.log(`🎫 [workos] Session created for user: ${user.user_id}`);
-
   return { user, sessionToken };
 }
 
@@ -146,7 +137,6 @@ export async function validateSession(
     const sessionData = await env.USER_SESSIONS.get(`workos_session:${sessionToken}`, 'json');
 
     if (!sessionData) {
-      console.log('❌ [workos] Session not found or expired');
       return {
         success: false,
         error: 'Session not found or expired'
@@ -157,7 +147,6 @@ export async function validateSession(
 
     // Check if session expired
     if (session.expires_at < Date.now()) {
-      console.log('❌ [workos] Session expired');
       await env.USER_SESSIONS.delete(`workos_session:${sessionToken}`);
       return {
         success: false,
@@ -169,14 +158,11 @@ export async function validateSession(
     const user = await getUserById(session.user_id, env.TOKEN_DB);
 
     if (!user) {
-      console.log('❌ [workos] User not found in database');
       return {
         success: false,
         error: 'User not found'
       };
     }
-
-    console.log(`✅ [workos] Valid session for user: ${user.user_id}`);
 
     return {
       success: true,
@@ -184,7 +170,7 @@ export async function validateSession(
     };
 
   } catch (error) {
-    console.error('❌ [workos] Session validation failed:', error);
+    console.error('[workos] Session validation failed:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Session validation failed'
@@ -203,7 +189,6 @@ export async function clearSession(
   env: WorkOSAuthEnv
 ): Promise<void> {
   await env.USER_SESSIONS.delete(`workos_session:${sessionToken}`);
-  console.log('🔓 [workos] Session cleared');
 }
 
 /**
@@ -226,7 +211,6 @@ export async function getLogoutUrl(
   const sessionData = await env.USER_SESSIONS.get(`workos_session:${sessionToken}`, 'json');
 
   if (!sessionData) {
-    console.error('❌ [workos] Session not found in KV, cannot generate logout URL');
     throw new Error('Session not found');
   }
 
@@ -236,8 +220,6 @@ export async function getLogoutUrl(
   // The 'sid' claim contains the actual WorkOS session ID
   const decoded = decodeJwt(session.access_token);
   const workosSessionId = decoded.sid as string;
-
-  console.log(`🔍 [workos] Extracted session ID from JWT: ${workosSessionId.substring(0, 8)}...`);
 
   // Clear session from our KV
   await clearSession(sessionToken, env);
@@ -249,7 +231,6 @@ export async function getLogoutUrl(
     returnTo: 'https://panel.wtyczki.ai/auth/logout-success',
   });
 
-  console.log('🚪 [workos] Generated logout URL with returnTo: /auth/logout-success');
   return logoutUrl;
 }
 
@@ -361,9 +342,6 @@ export async function getOrCreateUser(
       WHERE user_id = ?
     `).bind(email, timestamp, workosUserId, existingUser.user_id).run();
 
-    console.log(`👤 [auth] Existing user updated: ${existingUser.user_id}`);
-    console.log(`   Email synced: ${email}, WorkOS ID: ${workosUserId}`);
-
     const user: User = {
       user_id: existingUser.user_id,
       email,
@@ -381,9 +359,6 @@ export async function getOrCreateUser(
     INSERT INTO users (user_id, email, created_at, last_login_at, workos_user_id)
     VALUES (?, ?, ?, ?, ?)
   `).bind(userId, email, timestamp, timestamp, workosUserId).run();
-
-  console.log(`🆕 [auth] New user created: ${userId}`);
-  console.log(`   Email: ${email}, WorkOS ID: ${workosUserId}`);
 
   const user: User = {
     user_id: userId,

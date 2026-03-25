@@ -92,7 +92,7 @@ export async function handleUserInfoEndpoint(
       if (payload.aud) {
         const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
         if (!audiences.includes(env.WORKOS_CLIENT_ID)) {
-          console.warn(`[userinfo] JWT audience mismatch: ${JSON.stringify(payload.aud)}, expected: ${env.WORKOS_CLIENT_ID}`);
+          console.warn('[userinfo] JWT audience mismatch');
           return jsonResponse(
             { error: 'invalid_token', error_description: 'JWT audience mismatch' },
             401,

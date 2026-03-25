@@ -11,6 +11,7 @@ const PROTECTED_ROUTES = [
   '/dashboard',
   '/auth/user',
   '/api/keys',           // API key management endpoints
+  '/api/billing',        // Billing proxy to api.wtyczki.ai
 ];
 
 /**
@@ -52,7 +53,6 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
 
   if (!sessionToken) {
     // No session - redirect to login
-    console.log(`❌ [workos] No session found, redirecting to login`);
     const returnUrl = encodeURIComponent(url.pathname + url.search);
     return {
       user: null,
@@ -65,7 +65,6 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
 
   if (!sessionResult.success || !sessionResult.user) {
     // Invalid session - redirect to login
-    console.error(`❌ [workos] Session validation failed: ${sessionResult.error}`);
     const returnUrl = encodeURIComponent(url.pathname + url.search);
     return {
       user: null,
@@ -74,7 +73,6 @@ export async function authenticateRequest(request: Request, env: Env): Promise<A
   }
 
   // Session valid - return authenticated user
-  console.log(`✅ [workos] Authenticated user: ${sessionResult.user.email}`);
   return {
     user: sessionResult.user,
     response: null

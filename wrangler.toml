@@ -15,11 +15,7 @@ binding = "ASSETS"
 [vars]
 OAUTH_BASE_URL = "https://panel.wtyczki.ai"
 
-# Custom Domains (automatic DNS + certificate management)
-[[routes]]
-pattern = "api.wtyczki.ai"
-custom_domain = true
-
+# Custom Domain — auth panel only
 [[routes]]
 pattern = "panel.wtyczki.ai"
 custom_domain = true
@@ -33,6 +29,11 @@ database_id = "eac93639-d58e-4777-82e9-f1e28113d5b2"
 binding = "USER_SESSIONS"
 id = "e5ad189139cd44f38ba0224c3d596c73"
 preview_id = "49c43fb4d6e242db87fd885ba46b5a1d"
+
+# Service Binding to mcp-token-system (billing API)
+[[services]]
+binding = "BILLING_API"
+service = "mcp-token-system"
 
 # NOTE: Durable Objects deferred to production version
 # Prototype uses simple REST endpoints for faster validation
