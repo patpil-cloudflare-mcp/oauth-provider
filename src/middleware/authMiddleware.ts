@@ -10,6 +10,7 @@ import {
 const PROTECTED_ROUTES = [
   '/dashboard',
   '/auth/user',
+  '/auth/logout',        // Logout endpoint (POST)
   '/api/keys',           // API key management endpoints
   '/api/billing',        // Billing proxy to api.wtyczki.ai
 ];
