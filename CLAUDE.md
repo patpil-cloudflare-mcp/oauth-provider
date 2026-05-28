@@ -7,7 +7,6 @@
 
 Jedyne zrodlo tozsamosci. Zarzadza:
 - Sesjami (WorkOS AuthKit + Magic Auth)
-- Kluczami API (`wtyk_*`)
 - Endpointem `/oauth/userinfo` (serce auth calej platformy)
 - MCP discovery (`.well-known`)
 - Dashboardem uzytkownika (HTML)
@@ -36,7 +35,8 @@ Jedyne zrodlo tozsamosci. Zarzadza:
 | Sciezka | Metoda | Opis |
 |---------|--------|------|
 | `/` | GET | Unified auth page (login/rejestracja) lub API status |
-| `/oauth/userinfo` | GET | Zwraca `{ sub, email }` — API key lub AuthKit JWT |
+| `/oauth/userinfo` | GET | Zwraca `{ sub, email }` — AuthKit JWT |
+| `/oauth/userinfo-free` | GET | Auth + atomowe pobranie 1 slotu z dziennego limitu free MCP servera. Wymaga `X-MCP-Server`. Zwraca `{ sub, email, remaining, reset_at }` lub 429. |
 | `/.well-known/oauth-protected-resource` | GET | MCP discovery |
 | `/.well-known/oauth-authorization-server` | GET | Proxy do AuthKit metadata |
 | `/auth/login` | GET | Redirect do unified auth |
@@ -57,9 +57,6 @@ Jedyne zrodlo tozsamosci. Zarzadza:
 | `/auth/user` | GET | Info o uzytkowniku (JSON) |
 | `/dashboard` | GET | Panel uzytkownika (HTML) |
 | `/dashboard/settings` | GET | Ustawienia konta |
-| `/api/keys/create` | POST | Nowy klucz API (rate limit: 5/60s) |
-| `/api/keys/list` | GET | Lista kluczy |
-| `/api/keys/{id}` | DELETE | Usun klucz |
 | `/auth/logout` | POST | Wylogowanie (WorkOS + KV) |
 
 ### Billing proxy (chronione, forwarded do mcp-token-system via Service Binding)
@@ -78,15 +75,13 @@ Jedyne zrodlo tozsamosci. Zarzadza:
 src/
 ├── index.ts                    — Router glowny + billing proxy
 ├── types.ts                    — Interfejsy: User, AuthResult
-├── apiKeys.ts                  — Generowanie/walidacja kluczy wtyk_*
 ├── workos-auth.ts              — WorkOS: auth URL, callback, sesje
 ├── middleware/
 │   ├── authMiddleware.ts       — Middleware chronionych tras (cookie → KV)
 │   └── rateLimit.ts            — Rate limiting (fail-open)
 ├── routes/
-│   ├── userinfo.ts             — /oauth/userinfo (API key + AuthKit JWT)
+│   ├── userinfo.ts             — /oauth/userinfo (AuthKit JWT)
 │   ├── customAuth.ts           — Magic Auth (send-code, verify-code)
-│   ├── apiKeySettings.ts       — CRUD kluczy API
 │   ├── connectAuth.ts          — AuthKit standalone connect
 │   ├── accountSettings.ts      — Strona ustawien konta
 │   └── staticPages.ts          — Root, pricing, privacy, terms
@@ -117,19 +112,6 @@ Binding: `TOKEN_DB` | ID: `eac93639-d58e-4777-82e9-f1e28113d5b2`
 | `is_deleted` | INTEGER | 0=aktywny, 1=usuniety |
 | `workos_user_id` | TEXT UNIQUE | Identyfikator WorkOS |
 
-### Tabela `api_keys`
-| Kolumna | Typ | Opis |
-|---------|-----|------|
-| `api_key_id` | TEXT PK | UUID |
-| `user_id` | TEXT FK | → users.user_id (CASCADE) |
-| `api_key_hash` | TEXT UNIQUE | SHA-256 hash klucza |
-| `key_prefix` | TEXT | Pierwsze 16 znakow (do wyswietlania) |
-| `name` | TEXT | Nazwa nadana przez uzytkownika |
-| `last_used_at` | INTEGER | Timestamp ostatniego uzycia |
-| `created_at` | INTEGER | Timestamp utworzenia |
-| `expires_at` | INTEGER | Opcjonalne wygasniecie |
-| `is_active` | INTEGER | 1=aktywny, 0=uniewazn. |
-
 ### Tabela `account_deletions` (GDPR audit)
 | Kolumna | Typ | Opis |
 |---------|-----|------|
@@ -149,9 +131,7 @@ Binding: `TOKEN_DB` | ID: `eac93639-d58e-4777-82e9-f1e28113d5b2`
 
 ## 7. UWIERZYTELNIANIE `/oauth/userinfo`
 
-Dwie metody:
-1. **API Key** (`Bearer wtyk_...`) → SHA-256 hash → lookup w D1
-2. **AuthKit JWT** (`Bearer eyJ...`) → weryfikacja JWKS z AuthKit
+**AuthKit JWT** (`Bearer eyJ...`) → weryfikacja JWKS z AuthKit → mapowanie `workos_user_id` na kanoniczny `user_id` w D1. (Auth po kluczach API `wtyk_*` zostalo usuniete 2026-05-28.)
 
 Odpowiedz (200):
 ```json
@@ -177,16 +157,19 @@ Ustawiane przez `wrangler secret put`. Nigdy w kodzie.
 |---------|-------|-----|
 | `RATE_LIMIT_SEND_CODE` | 5 req/60s per email | Magic Auth send-code |
 | `RATE_LIMIT_VERIFY_CODE` | 10 req/60s | Magic Auth verify-code |
-| `RATE_LIMIT_API_KEYS` | 5 req/60s per user | CRUD kluczy API |
+| `FREE_USAGE_LIMITER` (DO) | per-server (np. 10/day) per (user × server) | Daily limit free MCP serverów; reset o północy Warsaw (lazy) |
 
 Strategia: fail-open (jesli rate limiter nie odpowiada, przepuszcza ruch).
+
+### Free MCP server registry (`FREE_SERVERS` env var)
+
+JSON map `{"<server-name>": <daily-limit>}` w `wrangler.toml`. Server musi być na liście, inaczej `/oauth/userinfo-free` zwraca 403. Dodanie nowego free servera = wpis + redeploy mcp-oauth (zero zmian schemy). Dokładny przepływ i wzorzec integracji po stronie serverów: `MCP_SERVER_INTEGRATION_GUIDE.md` sekcja "Free MCP Server Integration".
 
 ## 10. BEZPIECZENSTWO
 
 - **XSS**: `escapeHtml()` / `escapeJs()` w `utils/escapeHtml.ts`
 - **Open redirect**: `safeRedirectPath()` w `utils/safeRedirect.ts`
 - **CSRF**: Tokeny dla Magic Auth
-- **API keys**: Hashowane SHA-256, przechowywany tylko hash
 - **Cookie**: `HttpOnly; Secure; SameSite=Lax`
 - **SQL**: Prepared statements z `.bind()`, nigdy string concat
 
@@ -209,7 +192,6 @@ npx tsc --noEmit
 # Testy
 npm test                              # wszystkie
 npm run test:registration             # rejestracja
-npm run test:api-keys                 # klucze API
 npm run test:deletion                 # usuwanie konta
 npm run test:oauth                    # OAuth
 npm run test:database                 # baza danych
@@ -238,6 +220,7 @@ npx wrangler d1 migrations apply mcp-oauth --local    # lokalne
 2. **`request.body` w Workers jest jednorazowy** (ReadableStream) — proxy buduje body od nowa
 3. **Service Binding: `env.SERVICE.fetch(url, init)`** nie `fetch(new Request())` — TypeError
 4. **Cloudflare Access paths MUSZA miec leading `/`** — bez niego Access nie przechwytuje
+5. **Free MCP servery NIE walidują tokenów lokalnie** — wszystkie idą przez `/oauth/userinfo-free` (rule #6 z root CLAUDE.md). Workers Rate Limiting binding ma `period` max 60s — daily limity wymagają DO (`FREE_USAGE_LIMITER`) z lazy reset (porównanie `getWarsawDateKey()`). Bez alarmów: lazy działa pewniej i nie generuje N×30 schedulowanych eventów dziennie.
 
 ## 15. RED FLAGS — ZATRZYMAJ SIE I ZAPYTAJ
 
@@ -248,4 +231,4 @@ npx wrangler d1 migrations apply mcp-oauth --local    # lokalne
 - Chcesz zmienic cookie domain/flags (wplywa na oba workery)
 
 ---
-*Stan: po integracji auth + billing proxy (2026-03-25) | Wersja: 2.0*
+*Stan: po usunieciu auth po kluczach API — tylko AuthKit JWT (2026-05-28) | Wersja: 2.1*

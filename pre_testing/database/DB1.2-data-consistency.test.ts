@@ -2,7 +2,7 @@
 // Test: Database data consistency
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockEnv, createTestUser, createTestApiKey, MockEnv } from '../test-utils';
+import { createMockEnv, createTestUser, MockEnv } from '../test-utils';
 
 describe('DB1.2 - Data Consistency', () => {
   let env: MockEnv;
@@ -12,44 +12,6 @@ describe('DB1.2 - Data Consistency', () => {
   });
 
   describe('Referential integrity', () => {
-    it('should ensure API keys reference valid users', async () => {
-      const user = createTestUser();
-      const key = createTestApiKey(user.user_id);
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys([key]);
-
-      // Query with JOIN to verify relationship
-      const keyWithUser = await env.DB.prepare(`
-        SELECT ak.api_key_id, u.email
-        FROM api_keys ak
-        INNER JOIN users u ON ak.user_id = u.user_id
-        WHERE ak.api_key_id = ?
-      `).bind(key.api_key_id).first();
-
-      expect(keyWithUser).not.toBeNull();
-      expect(keyWithUser?.email).toBe(user.email);
-    });
-
-    it('should detect orphaned API keys (foreign key violation)', async () => {
-      const orphanedUserId = crypto.randomUUID();
-      const key = createTestApiKey(orphanedUserId);
-      env.DB.seedApiKeys([key]);
-
-      // User doesn't exist
-      const user = await env.DB.prepare(`
-        SELECT user_id FROM users WHERE user_id = ?
-      `).bind(orphanedUserId).first();
-
-      expect(user).toBeNull();
-
-      // Key references non-existent user
-      const orphanedKey = await env.DB.prepare(`
-        SELECT user_id FROM api_keys WHERE api_key_id = ?
-      `).bind(key.api_key_id).first();
-
-      expect(orphanedKey?.user_id).toBe(orphanedUserId);
-    });
-
     it('should ensure account_deletions reference valid users', async () => {
       const user = createTestUser();
       env.DB.seedUsers([user]);
@@ -126,21 +88,6 @@ describe('DB1.2 - Data Consistency', () => {
       expect([0, 1]).toContain(active?.is_deleted);
       expect([0, 1]).toContain(deleted?.is_deleted);
     });
-
-    it('should store api_key_hash as hex string', async () => {
-      const user = createTestUser();
-      const hash = 'a'.repeat(64); // SHA-256 produces 64 hex chars
-      const key = createTestApiKey(user.user_id, { api_key_hash: hash });
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys([key]);
-
-      const result = await env.DB.prepare(`
-        SELECT api_key_hash FROM api_keys WHERE api_key_id = ?
-      `).bind(key.api_key_id).first();
-
-      const hexRegex = /^[a-f0-9]{64}$/;
-      expect(hexRegex.test(result?.api_key_hash as string)).toBe(true);
-    });
   });
 
   describe('Soft delete consistency', () => {
@@ -193,39 +140,6 @@ describe('DB1.2 - Data Consistency', () => {
       `).bind('user5@example.com').first();
 
       expect(result).not.toBeNull();
-    });
-
-    it('should efficiently query by api_key_hash (idx_api_keys_hash)', async () => {
-      const user = createTestUser();
-      const keys = Array.from({ length: 10 }, (_, i) =>
-        createTestApiKey(user.user_id, { api_key_hash: `hash_${i}` })
-      );
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys(keys);
-
-      const result = await env.DB.prepare(`
-        SELECT api_key_id FROM api_keys WHERE api_key_hash = ?
-      `).bind('hash_5').first();
-
-      expect(result).not.toBeNull();
-    });
-
-    it('should efficiently query active keys by user (idx_api_keys_user_active)', async () => {
-      const user = createTestUser();
-      const activeKeys = Array.from({ length: 5 }, (_, i) =>
-        createTestApiKey(user.user_id, { name: `Active ${i}`, is_active: 1 })
-      );
-      const inactiveKeys = Array.from({ length: 5 }, (_, i) =>
-        createTestApiKey(user.user_id, { name: `Inactive ${i}`, is_active: 0 })
-      );
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys([...activeKeys, ...inactiveKeys]);
-
-      const result = await env.DB.prepare(`
-        SELECT COUNT(*) as count FROM api_keys WHERE user_id = ? AND is_active = 1
-      `).bind(user.user_id).first();
-
-      expect(result?.count).toBe(5);
     });
   });
 });

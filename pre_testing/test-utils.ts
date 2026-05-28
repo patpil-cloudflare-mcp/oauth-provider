@@ -10,17 +10,12 @@ export class MockD1Database {
   constructor() {
     // Initialize empty tables
     this.data.set('users', []);
-    this.data.set('api_keys', []);
     this.data.set('account_deletions', []);
   }
 
   // Seed data for testing
   seedUsers(users: Record<string, unknown>[]) {
     this.data.set('users', [...users]);
-  }
-
-  seedApiKeys(keys: Record<string, unknown>[]) {
-    this.data.set('api_keys', [...keys]);
   }
 
   // Get raw table data for assertions
@@ -31,7 +26,6 @@ export class MockD1Database {
   // Clear all data
   reset() {
     this.data.set('users', []);
-    this.data.set('api_keys', []);
     this.data.set('account_deletions', []);
     this.lastInsertId = 0;
   }
@@ -361,44 +355,6 @@ export interface TestUser {
   is_deleted: number;
   deleted_at: string | null;
   workos_user_id: string;
-}
-
-export function createTestApiKey(userId: string, overrides: Partial<TestApiKey> = {}): TestApiKey {
-  const keyId = overrides.api_key_id || crypto.randomUUID();
-  return {
-    api_key_id: keyId,
-    user_id: userId,
-    api_key_hash: overrides.api_key_hash || `hash_${keyId.slice(0, 16)}`,
-    key_prefix: overrides.key_prefix || `wtyk_${keyId.slice(0, 12)}`,
-    name: overrides.name || 'Test API Key',
-    last_used_at: overrides.last_used_at ?? null,
-    created_at: overrides.created_at || Date.now(),
-    expires_at: overrides.expires_at ?? null,
-    is_active: overrides.is_active ?? 1,
-  };
-}
-
-export interface TestApiKey {
-  api_key_id: string;
-  user_id: string;
-  api_key_hash: string;
-  key_prefix: string;
-  name: string;
-  last_used_at: number | null;
-  created_at: number;
-  expires_at: number | null;
-  is_active: number;
-}
-
-/**
- * Hash API key (same as production)
- */
-export async function hashApiKey(apiKey: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(apiKey);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /**

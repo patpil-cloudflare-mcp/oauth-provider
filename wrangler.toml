@@ -15,6 +15,9 @@ run_worker_first = true
 # OAuth 2.1 Configuration
 [vars]
 OAUTH_BASE_URL = "https://panel.wtyczki.ai"
+# Free MCP server registry: JSON map { "<server-name>": <daily-limit-per-user> }
+# Add an entry here to enable a free server's /oauth/userinfo-free integration.
+FREE_SERVERS = '{"ads-roi":10}'
 
 # Custom Domain — auth panel only
 [[routes]]
@@ -36,8 +39,15 @@ preview_id = "49c43fb4d6e242db87fd885ba46b5a1d"
 binding = "BILLING_API"
 service = "mcp-token-system"
 
-# NOTE: Durable Objects deferred to production version
-# Prototype uses simple REST endpoints for faster validation
+# Durable Object: per-(user × free server) daily usage counter with lazy
+# reset at Warsaw midnight. One DO instance per `${userId}:${serverName}`.
+[[durable_objects.bindings]]
+name = "FREE_USAGE_LIMITER"
+class_name = "FreeUsageLimiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FreeUsageLimiter"]
 
 # Rate Limiting Bindings (Workers Rate Limiting, GA Sep 2025)
 [[ratelimits]]
@@ -54,12 +64,4 @@ namespace_id = "1002"
 
   [ratelimits.simple]
   limit = 10
-  period = 60
-
-[[ratelimits]]
-name = "RATE_LIMIT_API_KEYS"
-namespace_id = "1003"
-
-  [ratelimits.simple]
-  limit = 5
   period = 60

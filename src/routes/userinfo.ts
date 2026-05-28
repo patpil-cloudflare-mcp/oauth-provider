@@ -1,29 +1,8 @@
 // src/routes/userinfo.ts - OAuth UserInfo Endpoint (AuthKit + API Keys)
-// Supports two auth paths:
-// 1. API keys (wtyk_ prefix) - validated via SHA-256 hash lookup
-// 2. AuthKit JWTs - verified via JWKS from AuthKit domain
+// Thin wrapper around shared authenticateBearer(). For free MCP servers with
+// daily rate limits use /oauth/userinfo-free instead.
 
-import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { validateApiKey } from '../apiKeys';
-import type { User } from '../types';
-
-interface UserinfoEnv {
-  TOKEN_DB: D1Database;
-  AUTHKIT_DOMAIN: string;
-  WORKOS_CLIENT_ID: string;
-}
-
-// Cache JWKS keyset per AuthKit domain (survives across requests in same isolate)
-const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
-
-function getJWKS(authkitDomain: string) {
-  let jwks = jwksCache.get(authkitDomain);
-  if (!jwks) {
-    jwks = createRemoteJWKSet(new URL(`${authkitDomain}/oauth2/jwks`));
-    jwksCache.set(authkitDomain, jwks);
-  }
-  return jwks;
-}
+import { authenticateBearer, type BearerAuthEnv } from '../auth/authenticateBearer';
 
 /**
  * Build WWW-Authenticate header for 401 responses.
@@ -51,10 +30,9 @@ function buildWwwAuthenticate(request: Request, error?: string, errorDescription
  */
 export async function handleUserInfoEndpoint(
   request: Request,
-  env: UserinfoEnv
+  env: BearerAuthEnv,
 ): Promise<Response> {
   const authHeader = request.headers.get('Authorization');
-
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return jsonResponse(
       { error: 'invalid_token' },
@@ -63,95 +41,16 @@ export async function handleUserInfoEndpoint(
     );
   }
 
-  const token = authHeader.substring(7);
-
-  let userId: string | null = null;
-
-  if (token.startsWith('wtyk_')) {
-    // API key authentication
-    userId = await validateApiKey(token, env);
-
-    if (!userId) {
-      return jsonResponse(
-        { error: 'invalid_token', error_description: 'Invalid or revoked API key' },
-        401,
-        { 'WWW-Authenticate': buildWwwAuthenticate(request, 'invalid_token', 'Invalid or revoked API key') },
-      );
-    }
-  } else {
-    // AuthKit JWT authentication
-    try {
-      const JWKS = getJWKS(env.AUTHKIT_DOMAIN);
-
-      const { payload } = await jwtVerify(token, JWKS, {
-        issuer: env.AUTHKIT_DOMAIN,
-      });
-
-      // Validate audience claim if present in the JWT.
-      // WorkOS standard tokens may omit `aud`, so we only reject on mismatch.
-      if (payload.aud) {
-        const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-        if (!audiences.includes(env.WORKOS_CLIENT_ID)) {
-          console.warn('[userinfo] JWT audience mismatch');
-          return jsonResponse(
-            { error: 'invalid_token', error_description: 'JWT audience mismatch' },
-            401,
-            { 'WWW-Authenticate': buildWwwAuthenticate(request, 'invalid_token', 'JWT audience mismatch') },
-          );
-        }
-      }
-
-      const workosUserId = payload.sub;
-      if (!workosUserId) {
-        return jsonResponse(
-          { error: 'invalid_token', error_description: 'JWT missing sub claim' },
-          401,
-          { 'WWW-Authenticate': buildWwwAuthenticate(request, 'invalid_token', 'JWT missing sub claim') },
-        );
-      }
-
-      // Look up local user by WorkOS user ID
-      const userRecord = await env.TOKEN_DB.prepare(
-        'SELECT user_id FROM users WHERE workos_user_id = ? AND is_deleted = 0'
-      ).bind(workosUserId).first<{ user_id: string }>();
-
-      if (!userRecord) {
-        return jsonResponse(
-          { error: 'invalid_token', error_description: 'User not found' },
-          401,
-          { 'WWW-Authenticate': buildWwwAuthenticate(request, 'invalid_token', 'User not found') },
-        );
-      }
-
-      userId = userRecord.user_id;
-    } catch (error) {
-      console.error('JWT verification failed:', error);
-      const desc = error instanceof Error ? error.message : 'JWT verification failed';
-      return jsonResponse(
-        { error: 'invalid_token', error_description: desc },
-        401,
-        { 'WWW-Authenticate': buildWwwAuthenticate(request, 'invalid_token', desc) },
-      );
-    }
-  }
-
-  // Fetch user from database
-  const user = await env.TOKEN_DB.prepare(
-    'SELECT user_id, email FROM users WHERE user_id = ? AND is_deleted = 0'
-  ).bind(userId).first<Pick<User, 'user_id' | 'email'>>();
-
-  if (!user) {
+  const auth = await authenticateBearer(request, env);
+  if (!auth) {
     return jsonResponse(
-      { error: 'invalid_token' },
+      { error: 'invalid_token', error_description: 'Invalid or expired credentials' },
       401,
-      { 'WWW-Authenticate': buildWwwAuthenticate(request, 'invalid_token') },
+      { 'WWW-Authenticate': buildWwwAuthenticate(request, 'invalid_token', 'Invalid or expired credentials') },
     );
   }
 
-  return jsonResponse({
-    sub: user.user_id,
-    email: user.email,
-  }, 200);
+  return jsonResponse({ sub: auth.sub, email: auth.email }, 200);
 }
 
 function jsonResponse(data: unknown, status: number, extraHeaders?: Record<string, string>): Response {

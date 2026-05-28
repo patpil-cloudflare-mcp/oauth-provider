@@ -2,16 +2,7 @@
 import type { User } from '../../../types';
 import { escapeHtml, escapeJs } from '../../../utils/escapeHtml';
 
-interface ApiKey {
-  api_key_id: string;
-  name: string;
-  key_prefix: string;
-  created_at: string;
-  last_used_at: string | null;
-  is_active: number;
-}
-
-export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string {
+export function renderDashboardPage(user: User): string {
   const formatDate = (dateStr: string | null): string => {
     if (!dateStr) return 'Nigdy';
     return new Date(dateStr).toLocaleDateString('pl-PL', {
@@ -22,35 +13,6 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
       minute: '2-digit'
     });
   };
-
-  const apiKeysHtml = apiKeys.length > 0
-    ? apiKeys.map(key => `
-        <tr>
-          <td class="key-name">${key.name || 'Bez nazwy'}</td>
-          <td class="key-prefix"><code>${key.key_prefix}...</code></td>
-          <td>${formatDate(key.created_at)}</td>
-          <td>${formatDate(key.last_used_at)}</td>
-          <td>
-            <span class="status-badge ${key.is_active ? 'status-active' : 'status-inactive'}">
-              ${key.is_active ? 'Aktywny' : 'Nieaktywny'}
-            </span>
-          </td>
-          <td>
-            <button class="action-btn action-btn-danger" onclick="revokeApiKey('${key.api_key_id}')">
-              Usuń
-            </button>
-          </td>
-        </tr>
-      `).join('')
-    : `
-        <tr>
-          <td colspan="6" class="empty-state">
-            <div class="empty-icon">🔑</div>
-            <p>Nie masz jeszcze żadnych kluczy API</p>
-            <p class="empty-hint">Utwórz klucz, aby połączyć aplikacje MCP</p>
-          </td>
-        </tr>
-      `;
 
   return `
 <!DOCTYPE html>
@@ -566,37 +528,6 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
       </a>
     </div>
 
-    <!-- API Keys Card (hidden for now - will be enabled later) -->
-    <!--
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">
-          <span class="card-title-icon">🔑</span>
-          Klucze API
-        </h2>
-        <button class="action-btn action-btn-primary" onclick="showCreateKeyModal()">
-          + Utwórz klucz
-        </button>
-      </div>
-      <p style="margin: 8px 16px 0; font-size: 13px; color: #6b7280;">W większości przypadków nie musisz generować kluczy API, jeśli używasz wtyczek AI (serwerów MCP) w ChatGPT, Claude, Alice.</p>
-      <table class="api-keys-table">
-        <thead>
-          <tr>
-            <th>Nazwa</th>
-            <th>Klucz</th>
-            <th>Utworzony</th>
-            <th>Ostatnio użyty</th>
-            <th>Status</th>
-            <th>Akcje</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${apiKeysHtml}
-        </tbody>
-      </table>
-    </div>
-    -->
-
     <!-- Transaction History Card (loaded from api.wtyczki.ai) -->
     <div class="card">
       <div class="card-header">
@@ -621,132 +552,8 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
     </div>
   </div>
 
-  <!-- API Key Modals (hidden for now - will be enabled later) -->
-  <!--
-  <div id="createKeyModal" class="modal-overlay">
-    <div class="modal">
-      <h3 class="modal-title">Utwórz nowy klucz API</h3>
-      <form id="createKeyForm" onsubmit="createApiKey(event)">
-        <div class="form-group">
-          <label class="form-label" for="keyName">Nazwa klucza</label>
-          <input
-            type="text"
-            id="keyName"
-            class="form-input"
-            placeholder="np. Produkcja, Testowy"
-            required
-          />
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="action-btn" onclick="hideCreateKeyModal()" style="background: #f3f4f6; color: #374151;">
-            Anuluj
-          </button>
-          <button type="submit" class="action-btn action-btn-primary">
-            Utwórz klucz
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="newKeyModal" class="modal-overlay">
-    <div class="modal">
-      <h3 class="modal-title">Klucz API utworzony</h3>
-      <div class="warning-box">
-        ⚠️ Zapisz ten klucz teraz! Nie będziesz mógł go zobaczyć ponownie.
-      </div>
-      <div class="new-key-display">
-        <div class="new-key-label">Twój nowy klucz API:</div>
-        <div id="newKeyValue" class="new-key-value"></div>
-      </div>
-      <div class="modal-actions">
-        <button class="action-btn action-btn-primary" onclick="copyAndClose()">
-          Skopiuj i zamknij
-        </button>
-      </div>
-    </div>
-  </div>
-  -->
-
   <script>
     const userId = '${escapeJs(user.user_id)}';
-
-    function showCreateKeyModal() {
-      document.getElementById('createKeyModal').classList.add('visible');
-      document.getElementById('keyName').focus();
-    }
-
-    function hideCreateKeyModal() {
-      document.getElementById('createKeyModal').classList.remove('visible');
-      document.getElementById('createKeyForm').reset();
-    }
-
-    async function createApiKey(event) {
-      event.preventDefault();
-
-      const name = document.getElementById('keyName').value.trim();
-      if (!name) {
-        alert('Proszę podać nazwę klucza');
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/keys/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name })
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Nie udało się utworzyć klucza');
-        }
-
-        const data = await response.json();
-
-        // Hide create modal
-        hideCreateKeyModal();
-
-        // Show new key modal
-        document.getElementById('newKeyValue').textContent = data.apiKey;
-        document.getElementById('newKeyModal').classList.add('visible');
-
-      } catch (error) {
-        alert('Błąd: ' + error.message);
-      }
-    }
-
-    function copyAndClose() {
-      const keyValue = document.getElementById('newKeyValue').textContent;
-      navigator.clipboard.writeText(keyValue).then(() => {
-        document.getElementById('newKeyModal').classList.remove('visible');
-        window.location.reload();
-      }).catch(() => {
-        alert('Nie udało się skopiować. Skopiuj klucz ręcznie.');
-      });
-    }
-
-    async function revokeApiKey(apiKeyId) {
-      if (!confirm('Czy na pewno chcesz usunąć ten klucz API? Tej operacji nie można cofnąć.')) {
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/keys/' + apiKeyId, {
-          method: 'DELETE'
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Nie udało się usunąć klucza');
-        }
-
-        window.location.reload();
-
-      } catch (error) {
-        alert('Błąd: ' + error.message);
-      }
-    }
 
     // Logout handler
     async function handleLogout() {
@@ -770,23 +577,6 @@ export function renderDashboardPage(user: User, apiKeys: ApiKey[] = []): string 
         window.location.href = '/auth/login-custom';
       }
     }
-
-    // Close modals on escape key
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        hideCreateKeyModal();
-        document.getElementById('newKeyModal').classList.remove('visible');
-      }
-    });
-
-    // Close modals on overlay click
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-      overlay.addEventListener('click', function(e) {
-        if (e.target === this) {
-          this.classList.remove('visible');
-        }
-      });
-    });
 
     // ============================================================
     // TOKEN BALANCE & TRANSACTIONS (from api.wtyczki.ai)

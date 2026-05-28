@@ -5,6 +5,11 @@
 **Domains**: `panel.wtyczki.ai` (Dashboard), `api.wtyczki.ai` (API)
 **Last Updated**: 2026-02-16
 
+> ⚠️ **OUTDATED (as of 2026-05-28):** API-key authentication (`wtyk_*` keys) was
+> **removed**. Authentication is now AuthKit JWT only. Section 4, the `api_keys`
+> table (§6.2), the `/api/keys/*` endpoints (§8.2), and all `wtyk_`/API-key
+> references below are obsolete. Regenerate this report. Canonical state: `CLAUDE.md`.
+
 ---
 
 ## Table of Contents

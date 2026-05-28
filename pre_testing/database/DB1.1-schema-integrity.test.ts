@@ -2,7 +2,7 @@
 // Test: Database schema integrity
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockEnv, createTestUser, createTestApiKey, MockEnv } from '../test-utils';
+import { createMockEnv, createTestUser, MockEnv } from '../test-utils';
 
 describe('DB1.1 - Schema Integrity', () => {
   let env: MockEnv;
@@ -89,86 +89,6 @@ describe('DB1.1 - Schema Integrity', () => {
       `).bind(user.user_id).first();
 
       expect(result?.deleted_at).toBeNull();
-    });
-  });
-
-  describe('API keys table schema', () => {
-    it('should have api_key_id as PRIMARY KEY', async () => {
-      const user = createTestUser();
-      const key = createTestApiKey(user.user_id);
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys([key]);
-
-      const result = await env.DB.prepare(`
-        SELECT api_key_id FROM api_keys WHERE api_key_id = ?
-      `).bind(key.api_key_id).first();
-
-      expect(result?.api_key_id).toBe(key.api_key_id);
-    });
-
-    it('should have user_id as FOREIGN KEY', async () => {
-      const user = createTestUser();
-      const key = createTestApiKey(user.user_id);
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys([key]);
-
-      const result = await env.DB.prepare(`
-        SELECT user_id FROM api_keys WHERE api_key_id = ?
-      `).bind(key.api_key_id).first();
-
-      expect(result?.user_id).toBe(user.user_id);
-    });
-
-    it('should have api_key_hash as UNIQUE', async () => {
-      const user = createTestUser();
-      const key = createTestApiKey(user.user_id, { api_key_hash: 'unique_hash_123' });
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys([key]);
-
-      const result = await env.DB.prepare(`
-        SELECT api_key_id FROM api_keys WHERE api_key_hash = ?
-      `).bind('unique_hash_123').first();
-
-      expect(result).not.toBeNull();
-    });
-
-    it('should have name column', async () => {
-      const user = createTestUser();
-      const key = createTestApiKey(user.user_id, { name: 'Production Key' });
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys([key]);
-
-      const result = await env.DB.prepare(`
-        SELECT name FROM api_keys WHERE api_key_id = ?
-      `).bind(key.api_key_id).first();
-
-      expect(result?.name).toBe('Production Key');
-    });
-
-    it('should have is_active column', async () => {
-      const user = createTestUser();
-      const key = createTestApiKey(user.user_id, { is_active: 1 });
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys([key]);
-
-      const result = await env.DB.prepare(`
-        SELECT is_active FROM api_keys WHERE api_key_id = ?
-      `).bind(key.api_key_id).first();
-
-      expect(result?.is_active).toBe(1);
-    });
-
-    it('should have optional expires_at column', async () => {
-      const user = createTestUser();
-      const key = createTestApiKey(user.user_id, { expires_at: null });
-      env.DB.seedUsers([user]);
-      env.DB.seedApiKeys([key]);
-
-      const result = await env.DB.prepare(`
-        SELECT expires_at FROM api_keys WHERE api_key_id = ?
-      `).bind(key.api_key_id).first();
-
-      expect(result?.expires_at).toBeNull();
     });
   });
 

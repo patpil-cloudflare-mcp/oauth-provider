@@ -8,7 +8,6 @@
     "test:coverage": "vitest run --coverage",
     "test:registration": "vitest run pre_testing/user-registration",
     "test:deletion": "vitest run pre_testing/account-deletion",
-    "test:api-keys": "vitest run pre_testing/api-keys",
     "test:oauth": "vitest run pre_testing/oauth",
     "test:database": "vitest run pre_testing/database",
     "test:verbose": "vitest run --reporter=verbose"

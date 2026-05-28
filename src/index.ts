@@ -1,5 +1,7 @@
 // src/index.ts - Main Worker with Authentication & AuthKit MCP Auth
 import { handleUserInfoEndpoint } from './routes/userinfo';
+import { handleUserinfoFree } from './routes/userinfoFree';
+export { FreeUsageLimiter } from './durableObjects/FreeUsageLimiter';
 import {
   handleCallback,
   getLogoutUrl,
@@ -26,11 +28,6 @@ import { handleConnectLogin } from './routes/connectAuth';
 import {
   handleSettingsPage,
 } from './routes/accountSettings';
-import {
-  handleCreateApiKey,
-  handleListApiKeys,
-  handleRevokeApiKey,
-} from './routes/apiKeySettings';
 
 export interface Env {
   // Database
@@ -55,10 +52,15 @@ export interface Env {
   // Rate Limiting
   RATE_LIMIT_SEND_CODE: RateLimit;
   RATE_LIMIT_VERIFY_CODE: RateLimit;
-  RATE_LIMIT_API_KEYS: RateLimit;
 
   // Service Binding to mcp-token-system
   BILLING_API: Fetcher;
+
+  // Free MCP server registry: JSON map { "<server-name>": <daily-limit> }
+  FREE_SERVERS: string;
+
+  // Daily usage limiter for free MCP servers (per user × server)
+  FREE_USAGE_LIMITER: DurableObjectNamespace;
 }
 
 export default {
@@ -66,11 +68,16 @@ export default {
     const url = new URL(request.url);
 
     // ============================================================
-    // OAUTH USERINFO ENDPOINT (API keys + AuthKit JWTs)
+    // OAUTH USERINFO ENDPOINT (AuthKit JWTs)
     // ============================================================
 
     if (url.pathname === '/oauth/userinfo') {
       return await handleUserInfoEndpoint(request, env);
+    }
+
+    // Free MCP servers: combined auth + daily quota check
+    if (url.pathname === '/oauth/userinfo-free') {
+      return await handleUserinfoFree(request, env);
     }
 
     // ============================================================
@@ -311,23 +318,7 @@ export default {
 
     // Dashboard page
     if (url.pathname === '/dashboard' && request.method === 'GET') {
-      const apiKeysResult = await env.TOKEN_DB.prepare(`
-        SELECT api_key_id, name, key_prefix, created_at, last_used_at, is_active
-        FROM api_keys
-        WHERE user_id = ? AND is_active = 1
-        ORDER BY created_at DESC
-      `).bind(authenticatedUser.user_id).all();
-
-      const apiKeys = (apiKeysResult.results || []) as Array<{
-        api_key_id: string;
-        name: string;
-        key_prefix: string;
-        created_at: string;
-        last_used_at: string | null;
-        is_active: number;
-      }>;
-
-      return new Response(renderDashboardPage(authenticatedUser, apiKeys), {
+      return new Response(renderDashboardPage(authenticatedUser), {
         status: 200,
         headers: { 'Content-Type': 'text/html' }
       });
@@ -399,25 +390,6 @@ export default {
           status: 502,
           headers: { 'Content-Type': 'application/json' },
         });
-      }
-    }
-
-    // ============================================================
-    // API KEY MANAGEMENT ENDPOINTS
-    // ============================================================
-
-    if (url.pathname === '/api/keys/create' && request.method === 'POST') {
-      return await handleCreateApiKey(request, env, authenticatedUser);
-    }
-
-    if (url.pathname === '/api/keys/list' && request.method === 'GET') {
-      return await handleListApiKeys(request, env, authenticatedUser);
-    }
-
-    if (url.pathname.startsWith('/api/keys/') && request.method === 'DELETE') {
-      const apiKeyId = url.pathname.split('/').pop();
-      if (apiKeyId) {
-        return await handleRevokeApiKey(request, env, authenticatedUser, apiKeyId);
       }
     }
 

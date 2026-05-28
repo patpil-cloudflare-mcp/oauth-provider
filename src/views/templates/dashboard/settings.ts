@@ -407,32 +407,6 @@ export function renderSettingsPage(user: User): string {
       <button class="logout-button" onclick="handleLogout()">Wyloguj się</button>
     </div>
 
-    <!-- API Keys Section -->
-    <div class="info-card">
-      <h2 class="section-title">🔑 Klucze API</h2>
-      <p class="info-subtitle">Twórz stałe klucze API do używania serwerów MCP w narzędziach takich jak Cursor, Windsur, LM Studio lub własne integracje.</p>
-
-      <div class="warning-box" style="margin: 16px 0; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px;">
-        <strong>⚠️ Ważne</strong>
-        <ul style="margin: 8px 0 0 20px; font-size: 13px;">
-          <li>Klucze API mają pełny dostęp do Twojego konta</li>
-          <li>Nigdy nie udostępniaj kluczy publicznie</li>
-          <li>Odwołaj klucze, których już nie używasz</li>
-        </ul>
-      </div>
-
-      <div id="api-keys-list">
-        <div style="text-align: center; padding: 20px; color: #6b7280;">
-          <div class="spinner"></div>
-          <p>Ładowanie kluczy API...</p>
-        </div>
-      </div>
-
-      <button class="buy-button" onclick="showCreateApiKeyModal()" style="margin-top: 16px;">
-        + Utwórz nowy klucz API
-      </button>
-    </div>
-
     <!-- Danger Zone -->
     <div class="danger-zone">
       <h2 class="danger-title">⚠️ Strefa niebezpieczna</h2>
@@ -442,7 +416,6 @@ export function renderSettingsPage(user: User): string {
         <strong>⚠️ Uwaga! Usunięcie konta jest trwałe i nieodwracalne.</strong>
         <ul>
           <li><strong>Utracisz dostęp</strong> do swojego konta</li>
-          <li><strong>Wszystkie klucze API</strong> zostaną odwołane</li>
           <li><strong>Twoje dane osobowe</strong> zostaną zanonimizowane zgodnie z GDPR</li>
         </ul>
       </div>
@@ -461,7 +434,6 @@ export function renderSettingsPage(user: User): string {
           <p><strong>Utracisz:</strong></p>
           <ul>
             <li>Dostęp do swojego konta</li>
-            <li>Wszystkie klucze API</li>
             <li>Wszystkie autoryzowane aplikacje</li>
           </ul>
         </div>
@@ -492,7 +464,6 @@ export function renderSettingsPage(user: User): string {
       <div style="margin: 16px 0;">
         <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Co zostanie usunięte:</h3>
         <ul style="margin-left: 20px; line-height: 1.8;">
-          <li>❌ Wszystkie klucze API</li>
           <li>❌ Wszystkie autoryzowane aplikacje</li>
           <li>❌ Dane konta</li>
           <li>✅ Email będzie dostępny do ponownej rejestracji</li>
@@ -524,242 +495,12 @@ export function renderSettingsPage(user: User): string {
     </div>
   </div>
 
-  <!-- Modal: Create API Key -->
-  <div id="modal-create-api-key" class="modal-overlay">
-    <div class="modal">
-      <h2 class="modal-title">🔑 Utwórz nowy klucz API</h2>
-      <div class="modal-content">
-        <p style="margin-bottom: 16px;">Podaj nazwę klucza (np. "AnythingLLM", "Cursor IDE"):</p>
-        <input
-          type="text"
-          id="api-key-name-input"
-          placeholder="Nazwa klucza..."
-          style="width: 100%; padding: 12px; border: 2px solid #eff4f7; border-radius: 8px; font-size: 16px; font-family: 'DM Sans', sans-serif;"
-        />
-      </div>
-      <div class="modal-buttons" style="margin-top: 24px;">
-        <button class="modal-button modal-button-cancel" onclick="closeModal('modal-create-api-key')">Anuluj</button>
-        <button class="modal-button modal-button-proceed" onclick="createApiKey()">Utwórz klucz</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Show API Key (Only Once!) -->
-  <div id="modal-show-api-key" class="modal-overlay">
-    <div class="modal" style="max-width: 600px;">
-      <h2 class="modal-title" style="color: #10b981;">✅ Klucz API utworzony!</h2>
-      <div class="modal-content">
-        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 16px; border-radius: 4px;">
-          <strong>⚠️ WAŻNE: To jedyny raz, kiedy zobaczysz ten klucz!</strong>
-          <p style="margin-top: 8px; font-size: 14px;">Skopiuj go teraz i przechowuj w bezpiecznym miejscu. Nie będziesz mógł go ponownie zobaczyć.</p>
-        </div>
-
-        <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-          <p style="font-weight: 600; margin-bottom: 8px;">Twój klucz API:</p>
-          <div style="display: flex; gap: 8px;">
-            <code id="new-api-key-display" style="flex: 1; background: white; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; word-break: break-all; border: 2px solid #e5e7eb;"></code>
-            <button onclick="copyNewApiKey()" style="padding: 8px 16px; background: #3239e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap;">
-              📋 Kopiuj
-            </button>
-          </div>
-        </div>
-
-        <div style="background: #e0f2fe; padding: 12px; border-radius: 6px; font-size: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <strong>🔧 Konfiguracja dla AnythingLLM:</strong>
-            <button onclick="copyAnythingLLMConfig()" style="padding: 6px 12px; background: #0ea5e9; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
-              📋 Kopiuj konfigurację
-            </button>
-          </div>
-          <pre id="anythingllm-config" style="background: white; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px;"></pre>
-        </div>
-      </div>
-      <div class="modal-buttons" style="margin-top: 24px;">
-        <button class="modal-button modal-button-confirm" onclick="closeModalAndReload('modal-show-api-key')" style="width: 100%;">Skopiowałem klucz - Zamknij</button>
-      </div>
-    </div>
-  </div>
-
   <script>
     const userId = '${escapeJs(user.user_id)}';
     const userEmail = '${escapeJs(user.email)}';
-    let newApiKey = '';
 
     // ============================================================
-    // API KEYS MANAGEMENT
-    // ============================================================
-
-    // Load API keys on page load
-    document.addEventListener('DOMContentLoaded', () => {
-      loadApiKeys();
-    });
-
-    async function loadApiKeys() {
-      try {
-        const response = await fetch('/api/keys/list');
-        const data = await response.json();
-
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to load API keys');
-        }
-
-        renderApiKeys(data.keys);
-      } catch (error) {
-        console.error('Error loading API keys:', error);
-        document.getElementById('api-keys-list').innerHTML = \`
-          <div style="text-align: center; padding: 20px; color: #dc2626;">
-            <p>❌ Nie udało się załadować kluczy API</p>
-            <button onclick="loadApiKeys()" style="margin-top: 12px; padding: 8px 16px; background: #3239e5; color: white; border: none; border-radius: 6px; cursor: pointer;">
-              Spróbuj ponownie
-            </button>
-          </div>
-        \`;
-      }
-    }
-
-    function renderApiKeys(keys) {
-      const container = document.getElementById('api-keys-list');
-
-      if (keys.length === 0) {
-        container.innerHTML = \`
-          <div style="text-align: center; padding: 20px; color: #6b7280;">
-            <p>Nie masz jeszcze żadnych kluczy API</p>
-            <p style="font-size: 14px; margin-top: 8px;">Kliknij "Utwórz nowy klucz API" aby rozpocząć</p>
-          </div>
-        \`;
-        return;
-      }
-
-      const html = keys.map(key => \`
-        <div class="api-key-item">
-          <div class="api-key-header">
-            <span class="api-key-name">\${key.name}</span>
-            <span class="api-key-prefix">\${key.key_prefix}...</span>
-          </div>
-          <div class="api-key-meta">
-            <span>📅 Utworzono: \${new Date(key.created_at).toLocaleDateString('pl-PL')}</span>
-            \${key.last_used_at ? \`<span>🕐 Ostatnio użyto: \${new Date(key.last_used_at).toLocaleDateString('pl-PL')}</span>\` : '<span>🕐 Nigdy nie użyto</span>'}
-            \${key.is_active === 1 ? '<span style="color: #10b981;">✅ Aktywny</span>' : '<span style="color: #dc2626;">🔴 Odwołany</span>'}
-          </div>
-          \${key.is_active === 1 ? \`
-            <div class="api-key-actions">
-              <button class="revoke-button" onclick="revokeApiKey('\${key.api_key_id}', '\${key.name}')">
-                🚫 Odwołaj klucz
-              </button>
-            </div>
-          \` : ''}
-        </div>
-      \`).join('');
-
-      container.innerHTML = html;
-    }
-
-    function showCreateApiKeyModal() {
-      document.getElementById('modal-create-api-key').classList.add('active');
-      document.getElementById('api-key-name-input').value = '';
-      document.getElementById('api-key-name-input').focus();
-    }
-
-    async function createApiKey() {
-      const nameInput = document.getElementById('api-key-name-input');
-      const name = nameInput.value.trim();
-
-      if (!name) {
-        alert('Podaj nazwę klucza');
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/keys/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name })
-        });
-
-        const data = await response.json();
-
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to create API key');
-        }
-
-        // Store the plaintext key
-        newApiKey = data.apiKey;
-
-        // Close create modal and show key modal
-        closeModal('modal-create-api-key');
-        document.getElementById('new-api-key-display').textContent = newApiKey;
-
-        // Generate AnythingLLM configuration with actual API key
-        const config = {
-          "mcpServers": {
-            "nbp-wtyczki-ai": {
-              "type": "sse",
-              "url": "https://nbp.wtyczki.ai/sse",
-              "headers": {
-                "Authorization": "Bearer " + newApiKey
-              }
-            }
-          }
-        };
-        document.getElementById('anythingllm-config').textContent = JSON.stringify(config, null, 2);
-
-        document.getElementById('modal-show-api-key').classList.add('active');
-
-      } catch (error) {
-        console.error('Error creating API key:', error);
-        alert('Nie udało się utworzyć klucza API: ' + error.message);
-      }
-    }
-
-    function copyNewApiKey() {
-      const keyDisplay = document.getElementById('new-api-key-display');
-      navigator.clipboard.writeText(keyDisplay.textContent).then(() => {
-        alert('✅ Klucz API skopiowany do schowka!');
-      });
-    }
-
-    function copyAnythingLLMConfig() {
-      const configText = document.getElementById('anythingllm-config').textContent;
-      navigator.clipboard.writeText(configText).then(() => {
-        alert('✅ Konfiguracja AnythingLLM skopiowana do schowka!');
-      }).catch(err => {
-        console.error('Failed to copy config:', err);
-        alert('❌ Nie udało się skopiować konfiguracji');
-      });
-    }
-
-    async function revokeApiKey(apiKeyId, keyName) {
-      if (!confirm(\`Czy na pewno chcesz odwołać klucz "\${keyName}"?\\n\\nTa operacja jest nieodwracalna.\`)) {
-        return;
-      }
-
-      try {
-        const response = await fetch(\`/api/keys/\${apiKeyId}\`, {
-          method: 'DELETE'
-        });
-
-        const data = await response.json();
-
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to revoke API key');
-        }
-
-        alert('✅ Klucz API został odwołany');
-        loadApiKeys(); // Reload the list
-
-      } catch (error) {
-        console.error('Error revoking API key:', error);
-        alert('Nie udało się odwołać klucza API: ' + error.message);
-      }
-    }
-
-    function closeModalAndReload(modalId) {
-      closeModal(modalId);
-      loadApiKeys();
-    }
-
-    // ============================================================
-    // ACCOUNT DELETION (Original Code)
+    // ACCOUNT DELETION
     // ============================================================
 
     // Show warning modal
