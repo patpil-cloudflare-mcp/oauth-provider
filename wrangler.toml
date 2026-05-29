@@ -17,7 +17,7 @@ run_worker_first = true
 OAUTH_BASE_URL = "https://panel.wtyczki.ai"
 # Free MCP server registry: JSON map { "<server-name>": <daily-limit-per-user> }
 # Add an entry here to enable a free server's /oauth/userinfo-free integration.
-FREE_SERVERS = '{"ads-roi":10}'
+FREE_SERVERS = '{"ads-roi":10,"nbp-rates":20}'
 
 # Custom Domain — auth panel only
 [[routes]]
