@@ -157,7 +157,7 @@ Ustawiane przez `wrangler secret put`. Nigdy w kodzie.
 |---------|-------|-----|
 | `RATE_LIMIT_SEND_CODE` | 5 req/60s per email | Magic Auth send-code |
 | `RATE_LIMIT_VERIFY_CODE` | 10 req/60s | Magic Auth verify-code |
-| `FREE_USAGE_LIMITER` (DO) | per-server (np. 10/day) per (user × server) | Daily limit free MCP serverów; reset o północy Warsaw (lazy) |
+| `FREE_USAGE_LIMITER` (DO) | per-server (domyślnie 20/day) per (user × server) | Daily limit free MCP serverów; reset o północy Warsaw (lazy) + alarm-cleanup (kasuje przeterminowane liczniki, by storage nie puchł) |
 
 Strategia: fail-open (jesli rate limiter nie odpowiada, przepuszcza ruch).
 
@@ -220,7 +220,7 @@ npx wrangler d1 migrations apply mcp-oauth --local    # lokalne
 2. **`request.body` w Workers jest jednorazowy** (ReadableStream) — proxy buduje body od nowa
 3. **Service Binding: `env.SERVICE.fetch(url, init)`** nie `fetch(new Request())` — TypeError
 4. **Cloudflare Access paths MUSZA miec leading `/`** — bez niego Access nie przechwytuje
-5. **Free MCP servery NIE walidują tokenów lokalnie** — wszystkie idą przez `/oauth/userinfo-free` (rule #6 z root CLAUDE.md). Workers Rate Limiting binding ma `period` max 60s — daily limity wymagają DO (`FREE_USAGE_LIMITER`) z lazy reset (porównanie `getWarsawDateKey()`). Bez alarmów: lazy działa pewniej i nie generuje N×30 schedulowanych eventów dziennie.
+5. **Free MCP servery NIE walidują tokenów lokalnie** — wszystkie idą przez `/oauth/userinfo-free` (rule #6 z root CLAUDE.md). Workers Rate Limiting binding ma `period` max 60s — daily limity wymagają DO (`FREE_USAGE_LIMITER`) z lazy reset (porównanie `getWarsawDateKey()`). **Reset = lazy; cleanup = alarm (2026-05-29).** Lazy reset zostaje (pewny przez DST), ale dochodzi JEDEN jednorazowy alarm na aktywną instancję (~1 min po północy → `deleteAll()` przeterminowanego licznika). To NIE jest „lawina N×30 eventów", której bała się pierwotna decyzja — to co najwyżej jeden alarm na instancję będącą w użyciu, hibernation-friendly, re-armowany tylko przy realnym `tryConsume`. Bez tego każda para `(user × server)`, która raz użyła limitu, trzymałaby ~12 KB metadanych SQLite w nieskończoność.
 
 ## 15. RED FLAGS — ZATRZYMAJ SIE I ZAPYTAJ
 
