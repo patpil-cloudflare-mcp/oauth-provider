@@ -19,6 +19,10 @@ OAUTH_BASE_URL = "https://panel.wtyczki.ai"
 # Keys are Worker names (X-MCP-Server header), NOT project dir names.
 # Add an entry here to enable a free server's /oauth/userinfo-free integration.
 # Fleet default 20/day (2026-05-29). Servers not listed → 403 → server fails open (no limit).
+# GUARDRAIL: every value MUST equal 20 — the over-quota card (free-quota.ts, byte-identical
+# fleet-wide) hardcodes "20 zapytań/dzień", so a non-20 server shows the wrong number to users.
+# CI check: `node scripts/rollout-quota.mjs --check`. To use a different limit, first make the
+# card dynamic (parse the panel's 429 limit). See various/RATE_LIMIT_PLAN.md.
 FREE_SERVERS = '{"ads-roi":20,"nbp-rates":20,"openskyapp":20,"mood-energy-log":20,"persona-empatia":20,"pomodoro":20,"quiz":20,"saas-navigator":20,"sales-audit":20,"sprawdz-posla":20,"carbon-auditor":20,"terminy-leczenia":20,"storyone":20,"mcp-shop":20}'
 
 # Custom Domain — auth panel only
