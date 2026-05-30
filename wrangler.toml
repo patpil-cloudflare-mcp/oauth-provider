@@ -19,7 +19,7 @@ OAUTH_BASE_URL = "https://panel.wtyczki.ai"
 # Keys are Worker names (X-MCP-Server header), NOT project dir names.
 # Add an entry here to enable a free server's /oauth/userinfo-free integration.
 # Fleet default 20/day (2026-05-29). Servers not listed → 403 → server fails open (no limit).
-FREE_SERVERS = '{"ads-roi":20,"nbp-rates":20,"openskyapp":20,"mood-energy-log":20,"persona-empatia":20,"pomodoro":20,"quiz":20,"saas-navigator":20,"sales-audit":20,"sprawdz-posla":20,"carbon-auditor":20,"terminy-leczenia":20,"storyone":20}'
+FREE_SERVERS = '{"ads-roi":20,"nbp-rates":20,"openskyapp":20,"mood-energy-log":20,"persona-empatia":20,"pomodoro":20,"quiz":20,"saas-navigator":20,"sales-audit":20,"sprawdz-posla":20,"carbon-auditor":20,"terminy-leczenia":20,"storyone":20,"mcp-shop":50}'
 
 # Custom Domain — auth panel only
 [[routes]]
