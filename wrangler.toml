@@ -30,6 +30,10 @@ FREE_SERVERS = '{"ads-roi":20,"nbp-rates":20,"openskyapp":20,"mood-energy-log":2
 pattern = "panel.wtyczki.ai"
 custom_domain = true
 
+# Workers Logs — feeds account-level Observability dashboard (7-day retention)
+[observability]
+enabled = true
+
 [[d1_databases]]
 binding = "TOKEN_DB"
 database_name = "mcp-oauth"
