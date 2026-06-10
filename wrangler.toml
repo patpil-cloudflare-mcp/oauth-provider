@@ -44,11 +44,6 @@ binding = "USER_SESSIONS"
 id = "e5ad189139cd44f38ba0224c3d596c73"
 preview_id = "49c43fb4d6e242db87fd885ba46b5a1d"
 
-# Service Binding to mcp-token-system (billing API)
-[[services]]
-binding = "BILLING_API"
-service = "mcp-token-system"
-
 # Durable Object: per-(user × free server) daily usage counter with lazy
 # reset at Warsaw midnight. One DO instance per `${userId}:${serverName}`.
 [[durable_objects.bindings]]

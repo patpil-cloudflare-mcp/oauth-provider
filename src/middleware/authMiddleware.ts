@@ -11,7 +11,6 @@ const PROTECTED_ROUTES = [
   '/dashboard',
   '/auth/user',
   '/auth/logout',        // Logout endpoint (POST)
-  '/api/billing',        // Billing proxy to api.wtyczki.ai
 ];
 
 /**

@@ -8,9 +8,13 @@
 Jedyne zrodlo tozsamosci. Zarzadza:
 - Sesjami (WorkOS AuthKit + Magic Auth)
 - Endpointem `/oauth/userinfo` (serce auth calej platformy)
+- Endpointem `/oauth/userinfo-free` (auth + dzienne limity free MCP serverow)
 - MCP discovery (`.well-known`)
 - Dashboardem uzytkownika (HTML)
-- Billing proxy do mcp-token-system (Service Binding)
+
+**Model platformy (od 2026-06-10):** wszystkie MCP servery sa darmowe z dziennym limitem
+per user (FreeUsageLimiter DO). Billing tokenowy zostal usuniety z mcp-oauth — worker
+mcp-token-system nadal istnieje, ale nie jest osiagalny z panelu (osobna decyzja o wylaczeniu).
 
 ## 2. STACK
 
@@ -20,7 +24,6 @@ Jedyne zrodlo tozsamosci. Zarzadza:
 | Language | TypeScript 6.x |
 | Database | D1 (`TOKEN_DB` binding) |
 | KV | `USER_SESSIONS` (sesje) |
-| Service Binding | `BILLING_API` → mcp-token-system |
 | Auth provider | WorkOS AuthKit |
 | Email | Resend (kody Magic Auth) |
 | JWT | `jose` (weryfikacja AuthKit JWKS) |
@@ -45,7 +48,6 @@ Jedyne zrodlo tozsamosci. Zarzadza:
 | `/auth/login-custom/verify-code` | POST | Magic Auth — weryfikuj kod (rate limit: 10/60s) |
 | `/auth/connect-login` | GET | AuthKit Standalone Connect |
 | `/auth/logout-success` | GET | Strona po wylogowaniu |
-| `/pricing` | GET | Pakiety tokenow |
 | `/privacy` | GET | Polityka prywatnosci |
 | `/terms` | GET | Regulamin |
 | `/public/*` | GET | Statyczne assety (logo) |
@@ -59,21 +61,11 @@ Jedyne zrodlo tozsamosci. Zarzadza:
 | `/dashboard/settings` | GET | Ustawienia konta |
 | `/auth/logout` | POST | Wylogowanie (WorkOS + KV) |
 
-### Billing proxy (chronione, forwarded do mcp-token-system via Service Binding)
-
-| Sciezka | Metoda | Forward do |
-|---------|--------|------------|
-| `/api/billing/checkout` | POST | `/checkout/create` |
-| `/api/billing/user` | GET | `/auth/user` |
-| `/api/billing/transactions` | GET | `/user/transactions` |
-
-**Dlaczego proxy?** Cookie `SameSite=Lax` nie jest wysylane na cross-origin POST. Same-origin proxy omija ten problem. Proxy buduje body od nowa (nie czyta `request.body` — ReadableStream jest jednorazowy w Workers).
-
 ## 4. STRUKTURA PLIKOW
 
 ```
 src/
-├── index.ts                    — Router glowny + billing proxy
+├── index.ts                    — Router glowny
 ├── types.ts                    — Interfejsy: User, AuthResult
 ├── workos-auth.ts              — WorkOS: auth URL, callback, sesje
 ├── middleware/
@@ -95,7 +87,7 @@ src/
     └── templates/
         ├── auth/               — loginSuccess.ts, logoutSuccess.ts
         ├── dashboard/          — dashboard.ts, settings.ts
-        └── public/             — unifiedAuth.ts, pricing.ts
+        └── public/             — unifiedAuth.ts
 ```
 
 ## 5. BAZA DANYCH D1 (mcp-oauth)
@@ -137,8 +129,6 @@ Odpowiedz (200):
 ```json
 { "sub": "uuid-user-id", "email": "user@example.com" }
 ```
-
-To jest endpoint ktory `mcp-token-system` wywoluje aby zidentyfikowac uzytkownika.
 
 ## 8. SEKRETY (produkcja)
 
@@ -216,8 +206,8 @@ npx wrangler d1 migrations apply mcp-oauth --local    # lokalne
 
 ## 14. WAZNE LEKCJE (UNIKAJ TYCH BLEDOW)
 
-1. **SameSite=Lax blokuje cross-origin POST cookies** — dlatego billing proxy jest same-origin
-2. **`request.body` w Workers jest jednorazowy** (ReadableStream) — proxy buduje body od nowa
+1. **SameSite=Lax blokuje cross-origin POST cookies** — cross-origin fetch z panelu wymaga same-origin proxy (tak dzialal usuniety billing proxy)
+2. **`request.body` w Workers jest jednorazowy** (ReadableStream) — w proxy buduj body od nowa
 3. **Service Binding: `env.SERVICE.fetch(url, init)`** nie `fetch(new Request())` — TypeError
 4. **Cloudflare Access paths MUSZA miec leading `/`** — bez niego Access nie przechwytuje
 5. **Free MCP servery NIE walidują tokenów lokalnie** — wszystkie idą przez `/oauth/userinfo-free` (rule #6 z root CLAUDE.md). Workers Rate Limiting binding ma `period` max 60s — daily limity wymagają DO (`FREE_USAGE_LIMITER`) z lazy reset (porównanie `getWarsawDateKey()`). **Reset = lazy; cleanup = alarm (2026-05-29).** Lazy reset zostaje (pewny przez DST), ale dochodzi JEDEN jednorazowy alarm na aktywną instancję (~1 min po północy → `deleteAll()` przeterminowanego licznika). To NIE jest „lawina N×30 eventów", której bała się pierwotna decyzja — to co najwyżej jeden alarm na instancję będącą w użyciu, hibernation-friendly, re-armowany tylko przy realnym `tryConsume`. Bez tego każda para `(user × server)`, która raz użyła limitu, trzymałaby ~12 KB metadanych SQLite w nieskończoność.
@@ -225,10 +215,10 @@ npx wrangler d1 migrations apply mcp-oauth --local    # lokalne
 ## 15. RED FLAGS — ZATRZYMAJ SIE I ZAPYTAJ
 
 - Chcesz modyfikowac schemat D1 (dane produkcyjne!)
-- Chcesz zmienic format `user_id` (UUID wspolny z mcp-token-system)
+- Chcesz zmienic format `user_id` (UUID kanoniczny dla calej platformy)
 - Chcesz usunac plik ktory wydaje sie nieuzywany
 - Chcesz zmienic logike `/oauth/userinfo` (serce auth calej platformy)
 - Chcesz zmienic cookie domain/flags (wplywa na oba workery)
 
 ---
-*Stan: po usunieciu auth po kluczach API — tylko AuthKit JWT (2026-05-28) | Wersja: 2.1*
+*Stan: po usunieciu billingu tokenowego z panelu — model free + dzienne limity (2026-06-10) | Wersja: 2.2*

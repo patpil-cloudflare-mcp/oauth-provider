@@ -1,6 +1,6 @@
 // src/views/templates/dashboard/dashboard.ts - Main Dashboard Page
 import type { User } from '../../../types';
-import { escapeHtml, escapeJs } from '../../../utils/escapeHtml';
+import { escapeHtml } from '../../../utils/escapeHtml';
 
 export function renderDashboardPage(user: User): string {
   const formatDate = (dateStr: string | null): string => {
@@ -459,40 +459,6 @@ export function renderDashboardPage(user: User): string {
       </div>
     </div>
 
-    <!-- Token Balance Card (loaded from api.wtyczki.ai) -->
-    <div class="card" id="tokenCard">
-      <div class="card-header">
-        <h2 class="card-title">
-          <span class="card-title-icon">🪙</span>
-          Saldo tokenów
-        </h2>
-      </div>
-      <div class="account-grid">
-        <div class="account-item" style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);">
-          <div class="account-label">Dostępne tokeny</div>
-          <div class="account-value" id="tokenBalance" style="font-size: 28px; color: #7a0bc0;">Ładowanie...</div>
-        </div>
-        <div class="account-item">
-          <div class="account-label">Łączne zakupy</div>
-          <div class="account-value" id="tokensPurchased">—</div>
-        </div>
-        <div class="account-item">
-          <div class="account-label" style="margin-bottom: 8px;">Doładuj konto</div>
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button class="action-btn action-btn-primary buy-btn" onclick="buyTokens('price_1TEctDCyk6tKob8SClH88Dzf', this)" style="width: 100%; padding: 8px;">
-              20 PLN — 2 000 tokenów
-            </button>
-            <button class="action-btn action-btn-primary buy-btn" onclick="buyTokens('price_1TEctECyk6tKob8SzsWEmQqi', this)" style="width: 100%; padding: 8px;">
-              50 PLN — 5 500 tokenów
-            </button>
-            <button class="action-btn action-btn-primary buy-btn" onclick="buyTokens('price_1TEctECyk6tKob8SGtBmYS4w', this)" style="width: 100%; padding: 8px;">
-              100 PLN — 12 000 tokenów
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Account Info Card -->
     <div class="card">
       <div class="card-header">
@@ -528,19 +494,6 @@ export function renderDashboardPage(user: User): string {
       </a>
     </div>
 
-    <!-- Transaction History Card (loaded from api.wtyczki.ai) -->
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">
-          <span class="card-title-icon">📋</span>
-          Historia transakcji
-        </h2>
-      </div>
-      <div id="transactionsList" style="min-height: 60px;">
-        <p style="text-align: center; color: rgba(34, 43, 79, 0.5); padding: 20px;">Ładowanie historii...</p>
-      </div>
-    </div>
-
     <!-- Footer -->
     <div class="footer">
       <div class="footer-links">
@@ -553,8 +506,6 @@ export function renderDashboardPage(user: User): string {
   </div>
 
   <script>
-    const userId = '${escapeJs(user.user_id)}';
-
     // Logout handler
     async function handleLogout() {
       try {
@@ -577,95 +528,6 @@ export function renderDashboardPage(user: User): string {
         window.location.href = '/auth/login-custom';
       }
     }
-
-    // ============================================================
-    // TOKEN BALANCE & TRANSACTIONS (from api.wtyczki.ai)
-    // ============================================================
-    const API_BASE = '/api/billing';
-
-    async function loadTokenBalance() {
-      try {
-        const res = await fetch(API_BASE + '/user');
-        if (!res.ok) {
-          document.getElementById('tokenBalance').textContent = 'Błąd ładowania';
-          return;
-        }
-        const data = await res.json();
-        const u = data.user;
-        document.getElementById('tokenBalance').textContent = (u.current_token_balance || 0).toLocaleString('pl-PL');
-        document.getElementById('tokensPurchased').textContent = (u.total_tokens_purchased || 0).toLocaleString('pl-PL');
-      } catch (e) {
-        console.error('Failed to load token balance:', e);
-        document.getElementById('tokenBalance').textContent = 'Niedostępne';
-      }
-    }
-
-    async function loadTransactions() {
-      const container = document.getElementById('transactionsList');
-      try {
-        const res = await fetch(API_BASE + '/transactions?limit=10&type=all');
-        if (!res.ok) {
-          container.innerHTML = '<p style="text-align: center; color: #dc2626; padding: 20px;">Nie udało się załadować historii.</p>';
-          return;
-        }
-        const data = await res.json();
-        const txs = data.transactions || [];
-
-        if (txs.length === 0) {
-          container.innerHTML = '<p style="text-align: center; color: rgba(34, 43, 79, 0.5); padding: 20px;">Brak transakcji. Kup tokeny, aby rozpocząć!</p>';
-          return;
-        }
-
-        let html = '<table class="api-keys-table"><thead><tr><th>Data</th><th>Typ</th><th>Opis</th><th>Tokeny</th><th>Saldo</th></tr></thead><tbody>';
-        for (const tx of txs) {
-          const date = new Date(tx.created_at).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-          const type = tx.type === 'purchase' ? '<span style="color: #059669;">Zakup</span>' : '<span style="color: #dc2626;">Użycie</span>';
-          const amount = tx.token_amount > 0 ? '+' + tx.token_amount : tx.token_amount;
-          const amountColor = tx.token_amount > 0 ? '#059669' : '#dc2626';
-          html += '<tr><td>' + date + '</td><td>' + type + '</td><td>' + (tx.description || '—') + '</td><td style="font-weight: 600; color: ' + amountColor + ';">' + amount + '</td><td>' + (tx.balance_after || '—') + '</td></tr>';
-        }
-        html += '</tbody></table>';
-        container.innerHTML = html;
-      } catch (e) {
-        console.error('Failed to load transactions:', e);
-        container.innerHTML = '<p style="text-align: center; color: #dc2626; padding: 20px;">Błąd ładowania historii.</p>';
-      }
-    }
-
-    async function buyTokens(priceId, btn) {
-      const buttons = document.querySelectorAll('.buy-btn');
-      buttons.forEach(b => { b.disabled = true; });
-      btn.textContent = 'Tworzenie płatności...';
-
-      try {
-        const res = await fetch(API_BASE + '/checkout?priceId=' + encodeURIComponent(priceId), {
-          method: 'POST',
-        });
-
-        const text = await res.text();
-        if (!res.ok) {
-          let errMsg = text;
-          try { errMsg = JSON.parse(text).error || text; } catch {}
-          throw new Error(errMsg);
-        }
-
-        const data = JSON.parse(text);
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          throw new Error('Brak URL płatności. Response: ' + text);
-        }
-      } catch (error) {
-        alert('Błąd: ' + error.message);
-        buttons.forEach(b => { b.disabled = false; });
-        btn.textContent = btn.getAttribute('data-label') || 'Kup';
-        window.location.reload();
-      }
-    }
-
-    // Load data on page ready
-    loadTokenBalance();
-    loadTransactions();
 
   </script>
 </body>

@@ -11,7 +11,6 @@ export { renderSettingsPage } from './templates/dashboard/settings';
 
 // Public templates
 export { renderUnifiedAuthPage, type AuthTab } from './templates/public/unifiedAuth';
-export { renderPricingPage } from './templates/public/pricing';
 
 // Shared components (available for direct import if needed)
 export * from './components/styles';
