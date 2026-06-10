@@ -13,8 +13,9 @@ Jedyne zrodlo tozsamosci. Zarzadza:
 - Dashboardem uzytkownika (HTML)
 
 **Model platformy (od 2026-06-10):** wszystkie MCP servery sa darmowe z dziennym limitem
-per user (FreeUsageLimiter DO). Billing tokenowy zostal usuniety z mcp-oauth — worker
-mcp-token-system nadal istnieje, ale nie jest osiagalny z panelu (osobna decyzja o wylaczeniu).
+per user (FreeUsageLimiter DO). Billing tokenowy zostal usuniety z mcp-oauth, a workery
+mcp-token-system (api.wtyczki.ai) i seo-ai usuniete z Cloudflare. Baza D1
+`mcp-tokens-database` zostala jako archiwum historii platnosci.
 
 ## 2. STACK
 
