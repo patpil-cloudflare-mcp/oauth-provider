@@ -44,6 +44,15 @@ binding = "USER_SESSIONS"
 id = "e5ad189139cd44f38ba0224c3d596c73"
 preview_id = "49c43fb4d6e242db87fd885ba46b5a1d"
 
+# Workers Analytics Engine — central per-(user × server) MCP tool-call usage.
+# Written best-effort on each allowed /oauth/userinfo-free consume (one call per
+# tools/call across the whole free fleet — the single instrumentation chokepoint).
+# Layout: index = [server]; blobs = [server, workos_user_id, email, tool]; double = [1].
+# `tool` is the optional X-MCP-Tool header (empty until free-quota.ts forwards it).
+[[analytics_engine_datasets]]
+binding = "USAGE"
+dataset = "mcp_usage"
+
 # Durable Object: per-(user × free server) daily usage counter with lazy
 # reset at Warsaw midnight. One DO instance per `${userId}:${serverName}`.
 [[durable_objects.bindings]]

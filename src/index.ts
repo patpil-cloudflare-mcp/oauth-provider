@@ -57,6 +57,10 @@ export interface Env {
 
   // Daily usage limiter for free MCP servers (per user × server)
   FREE_USAGE_LIMITER: DurableObjectNamespace;
+
+  // Workers Analytics Engine — central per-(user × server × tool) usage stream.
+  // Written best-effort in handleUserinfoFree on each allowed consume.
+  USAGE: AnalyticsEngineDataset;
 }
 
 export default {

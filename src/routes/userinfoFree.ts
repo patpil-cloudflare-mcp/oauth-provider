@@ -20,6 +20,8 @@ import type { ConsumeResult } from '../durableObjects/FreeUsageLimiter';
 export interface UserinfoFreeEnv extends BearerAuthEnv {
   FREE_SERVERS: string;
   FREE_USAGE_LIMITER: DurableObjectNamespace;
+  // Workers Analytics Engine — central per-(user × server × tool) usage stream.
+  USAGE: AnalyticsEngineDataset;
 }
 
 export async function handleUserinfoFree(
@@ -77,6 +79,18 @@ export async function handleUserinfoFree(
         },
       },
     );
+  }
+
+  // Best-effort central usage record — one row per allowed tool call, fleet-wide.
+  // Never let analytics break the auth/quota path (writeDataPoint is fire-and-forget).
+  try {
+    env.USAGE?.writeDataPoint({
+      indexes: [serverName],
+      blobs: [serverName, auth.sub, auth.email ?? '', request.headers.get('X-MCP-Tool') ?? ''],
+      doubles: [1],
+    });
+  } catch {
+    /* analytics is best-effort */
   }
 
   return Response.json({
