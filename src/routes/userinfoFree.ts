@@ -81,17 +81,11 @@ export async function handleUserinfoFree(
     );
   }
 
-  // Best-effort central usage record — one row per allowed tool call, fleet-wide.
-  // Never let analytics break the auth/quota path (writeDataPoint is fire-and-forget).
-  try {
-    env.USAGE?.writeDataPoint({
-      indexes: [serverName],
-      blobs: [serverName, auth.sub, auth.email ?? '', request.headers.get('X-MCP-Tool') ?? ''],
-      doubles: [1],
-    });
-  } catch {
-    /* analytics is best-effort */
-  }
+  // Central usage write RETIRED 2026-06-13: every free server now self-reports one
+  // row per tools/call to the `mcp_usage` dataset via its own recordToolUsage()
+  // helper (Option B), which carries the tool name (this endpoint never received
+  // X-MCP-Tool, so it wrote empty-tool rows and fired only intermittently/fail-open
+  // → it double-counted). The `USAGE` binding is left inert here; safe to drop later.
 
   return Response.json({
     sub: auth.sub,
