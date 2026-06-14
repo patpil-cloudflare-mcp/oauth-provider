@@ -7,3 +7,7 @@ node_modules
 # Sensitive files with secrets
 webhook-config.json
 test-report.json
+
+# Local Claude Code config (machine-specific)
+.claude/settings.local.json
+.claude/settings.local.json.bak-*
