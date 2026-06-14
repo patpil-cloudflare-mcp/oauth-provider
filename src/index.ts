@@ -14,11 +14,7 @@ import {
 } from './views';
 import { authenticateRequest, requiresAuthentication } from './middleware/authMiddleware';
 import { safeRedirectPath } from './utils/safeRedirect';
-import {
-  handleRootPath,
-  handlePrivacyPolicy,
-  handleTermsOfService,
-} from './routes/staticPages';
+import { handleRootPath } from './routes/staticPages';
 import {
   handleSendMagicAuthCode,
   handleVerifyMagicAuthCode,
@@ -254,18 +250,6 @@ export default {
     const rootResponse = await handleRootPath(request);
     if (rootResponse) {
       return rootResponse;
-    }
-
-    // ============================================================
-    // LEGAL PAGES (Public)
-    // ============================================================
-
-    if (url.pathname === '/privacy') {
-      return await handlePrivacyPolicy();
-    }
-
-    if (url.pathname === '/terms') {
-      return await handleTermsOfService();
     }
 
     // ============================================================

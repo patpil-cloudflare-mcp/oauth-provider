@@ -286,9 +286,9 @@ export function renderUnifiedAuthPage(
 
     <div class="footer">
       <div class="footer-links">
-        <a href="/privacy" class="footer-link">Polityka Prywatności</a>
-        <a href="/terms" class="footer-link">Regulamin</a>
-        <a href="mailto:support@wtyczki.pl" class="footer-link">Kontakt</a>
+        <a href="https://wtyczki.ai/polityka-prywatnosci/" target="_blank" rel="noopener noreferrer" class="footer-link">Polityka Prywatności</a>
+        <a href="https://wtyczki.ai/regulamin-serwisu/" target="_blank" rel="noopener noreferrer" class="footer-link">Regulamin</a>
+        <a href="mailto:hello@patrykpilat.pl" class="footer-link">Kontakt</a>
       </div>
       <p class="footer-text">© 2025 Wtyczki DEV Patryk Pilat</p>
     </div>

@@ -381,6 +381,29 @@ export function renderSettingsPage(user: User): string {
       .modal-buttons { flex-direction: column; }
       .api-key-header { flex-direction: column; align-items: flex-start; gap: 8px; }
     }
+
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: rgba(34, 43, 79, 0.5);
+      font-size: 13px;
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .footer-link {
+      color: rgba(34, 43, 79, 0.65);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-link:hover {
+      color: #7a0bc0;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -421,6 +444,16 @@ export function renderSettingsPage(user: User): string {
       </div>
 
       <button class="delete-button" onclick="showDeleteWarning()">Usuń moje konto</button>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-links">
+        <a href="https://wtyczki.ai/polityka-prywatnosci/" target="_blank" rel="noopener noreferrer" class="footer-link">Polityka Prywatności</a>
+        <a href="https://wtyczki.ai/regulamin-serwisu/" target="_blank" rel="noopener noreferrer" class="footer-link">Regulamin</a>
+        <a href="mailto:hello@patrykpilat.pl" class="footer-link">Kontakt</a>
+      </div>
+      <p>© 2025 Wtyczki DEV Patryk Pilat</p>
     </div>
   </div>
 

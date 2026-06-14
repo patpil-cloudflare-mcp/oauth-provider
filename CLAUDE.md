@@ -49,8 +49,6 @@ mcp-token-system (api.wtyczki.ai) i seo-ai usuniete z Cloudflare. Baza D1
 | `/auth/login-custom/verify-code` | POST | Magic Auth — weryfikuj kod (rate limit: 10/60s) |
 | `/auth/connect-login` | GET | AuthKit Standalone Connect |
 | `/auth/logout-success` | GET | Strona po wylogowaniu |
-| `/privacy` | GET | Polityka prywatnosci |
-| `/terms` | GET | Regulamin |
 | `/public/*` | GET | Statyczne assety (logo) |
 
 ### Chronione (wymagaja sesji cookie)
@@ -77,7 +75,7 @@ src/
 │   ├── customAuth.ts           — Magic Auth (send-code, verify-code)
 │   ├── connectAuth.ts          — AuthKit standalone connect
 │   ├── accountSettings.ts      — Strona ustawien konta
-│   └── staticPages.ts          — Root, pricing, privacy, terms
+│   └── staticPages.ts          — Root (subdomain-aware: panel auth / api status)
 ├── utils/
 │   ├── escapeHtml.ts           — Ochrona XSS
 │   └── safeRedirect.ts         — Ochrona open redirect

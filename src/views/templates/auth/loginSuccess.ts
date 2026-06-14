@@ -190,6 +190,11 @@ export function renderLoginSuccessPage(data: LoginSuccessData): string {
 
     <!-- Footer -->
     <div class="footer">
+      <div style="margin-bottom: 8px;">
+        <a href="https://wtyczki.ai/polityka-prywatnosci/" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: none;">Polityka Prywatności</a>
+        ·
+        <a href="https://wtyczki.ai/regulamin-serwisu/" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: none;">Regulamin</a>
+      </div>
       © 2025 wtyczki.ai - Wszystkie prawa zastrzeżone
     </div>
   </div>
