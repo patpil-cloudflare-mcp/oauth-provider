@@ -1,5 +1,6 @@
 // src/views/customLoginPage.ts - Custom Magic Auth Login UI
 import { escapeHtml } from '../utils/escapeHtml';
+import { LEGAL_PRIVACY_URL, LEGAL_TERMS_URL } from './components/links';
 
 export function renderLoginEmailForm(
   error?: string,
@@ -235,9 +236,9 @@ export function renderLoginEmailForm(
     <div class="footer">
       Pierwszy raz tutaj? <a href="/" style="color: #7a0bc0;">Zarejestruj się</a>
       <div style="margin-top: 12px;">
-        <a href="https://wtyczki.ai/polityka-prywatnosci/" target="_blank" rel="noopener noreferrer">Polityka Prywatności</a>
+        <a href="${LEGAL_PRIVACY_URL}" target="_blank" rel="noopener noreferrer">Polityka Prywatności</a>
         ·
-        <a href="https://wtyczki.ai/regulamin-serwisu/" target="_blank" rel="noopener noreferrer">Regulamin</a>
+        <a href="${LEGAL_TERMS_URL}" target="_blank" rel="noopener noreferrer">Regulamin</a>
       </div>
     </div>
   </div>
@@ -499,9 +500,9 @@ export function renderLoginCodeForm(
     <div class="footer">
       Nie otrzymałeś kodu? <a href="/?tab=login${returnTo !== '/dashboard' ? '&return_to=' + encodeURIComponent(returnTo) : ''}">Wyślij ponownie</a>
       <div style="margin-top: 12px;">
-        <a href="https://wtyczki.ai/polityka-prywatnosci/" target="_blank" rel="noopener noreferrer">Polityka Prywatności</a>
+        <a href="${LEGAL_PRIVACY_URL}" target="_blank" rel="noopener noreferrer">Polityka Prywatności</a>
         ·
-        <a href="https://wtyczki.ai/regulamin-serwisu/" target="_blank" rel="noopener noreferrer">Regulamin</a>
+        <a href="${LEGAL_TERMS_URL}" target="_blank" rel="noopener noreferrer">Regulamin</a>
       </div>
     </div>
   </div>

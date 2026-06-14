@@ -1,6 +1,7 @@
 // src/views/templates/dashboard/settings.ts - Account Settings Page
 import type { User } from '../../../types';
 import { escapeHtml, escapeJs } from '../../../utils/escapeHtml';
+import { renderFooterLinks } from '../../components/links';
 
 export function renderSettingsPage(user: User): string {
   return `
@@ -449,9 +450,7 @@ export function renderSettingsPage(user: User): string {
     <!-- Footer -->
     <div class="footer">
       <div class="footer-links">
-        <a href="https://wtyczki.ai/polityka-prywatnosci/" target="_blank" rel="noopener noreferrer" class="footer-link">Polityka Prywatności</a>
-        <a href="https://wtyczki.ai/regulamin-serwisu/" target="_blank" rel="noopener noreferrer" class="footer-link">Regulamin</a>
-        <a href="mailto:hello@patrykpilat.pl" class="footer-link">Kontakt</a>
+        ${renderFooterLinks()}
       </div>
       <p>© 2025 Wtyczki DEV Patryk Pilat</p>
     </div>

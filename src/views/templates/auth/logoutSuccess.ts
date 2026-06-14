@@ -1,5 +1,7 @@
 // src/views/templates/auth/logoutSuccess.ts - Logout Success Page
 
+import { LEGAL_PRIVACY_URL, LEGAL_TERMS_URL } from '../../components/links';
+
 export function renderLogoutSuccessPage(): string {
   return `
 <!DOCTYPE html>
@@ -169,9 +171,9 @@ export function renderLogoutSuccessPage(): string {
     <!-- Footer -->
     <div class="footer">
       <div style="margin-bottom: 8px;">
-        <a href="https://wtyczki.ai/polityka-prywatnosci/" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: none;">Polityka Prywatności</a>
+        <a href="${LEGAL_PRIVACY_URL}" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: none;">Polityka Prywatności</a>
         ·
-        <a href="https://wtyczki.ai/regulamin-serwisu/" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: none;">Regulamin</a>
+        <a href="${LEGAL_TERMS_URL}" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: none;">Regulamin</a>
       </div>
       © 2025 wtyczki.ai - Wszystkie prawa zastrzeżone
     </div>
