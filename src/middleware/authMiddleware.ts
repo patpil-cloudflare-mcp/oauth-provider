@@ -11,6 +11,7 @@ const PROTECTED_ROUTES = [
   '/dashboard',
   '/auth/user',
   '/auth/logout',        // Logout endpoint (POST)
+  '/account/delete',     // Account deletion (POST) — must be authenticated
 ];
 
 /**

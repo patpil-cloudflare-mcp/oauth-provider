@@ -1,11 +1,24 @@
 // src/routes/customAuth.ts - Custom Magic Auth Endpoints
 
-import { WorkOS } from '@workos-inc/node';
 import type { Env } from '../index';
 import { renderLoginCodeForm } from '../views/customLoginPage';
 import { renderLoginSuccessPage } from '../views';
 import { checkRateLimit } from '../middleware/rateLimit';
 import { safeRedirectPath } from '../utils/safeRedirect';
+import { getWorkOS } from '../utils/workosClient';
+
+/**
+ * Constant-time string comparison for CSRF tokens — avoids leaking match progress
+ * via timing. Length is allowed to differ (tokens are fixed-length UUIDs).
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
 
 /**
  * Handle email submission - Check if user exists, then send Magic Auth code (Step 2)
@@ -39,7 +52,7 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       return Response.redirect(`${baseUrl}/?${params.toString()}`, 303);
     };
 
-    if (!csrfToken || !cookieCsrf || csrfToken !== cookieCsrf) {
+    if (!csrfToken || !cookieCsrf || !timingSafeEqual(csrfToken, cookieCsrf)) {
       const tab = mode === 'register' ? 'register' : 'login';
       return buildErrorRedirect(tab, 'Nieprawidłowe żądanie. Odśwież stronę i spróbuj ponownie.');
     }
@@ -94,30 +107,13 @@ export async function handleSendMagicAuthCode(request: Request, env: Env): Promi
       }
     }
 
-    // Create Magic Auth code via WorkOS API
-
-    const magicAuthResponse = await fetch('https://api.workos.com/user_management/magic_auth', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.WORKOS_API_KEY}`,
-      },
-      body: JSON.stringify({ email }),
-    });
-
-    if (!magicAuthResponse.ok) {
-      const errorText = await magicAuthResponse.text();
-      console.error(`[custom-auth] Magic Auth API failed (${magicAuthResponse.status}): ${errorText}`);
-      throw new Error(`Magic Auth creation failed: ${magicAuthResponse.status}`);
-    }
-
-    const magicAuth = await magicAuthResponse.json() as {
-      id: string;
-      user_id: string;
-      email: string;
-      code: string;
-      expires_at: string;
-    };
+    // Create Magic Auth code via WorkOS SDK.
+    // NOTE: this endpoint also triggers WorkOS's own Magic Auth email by default.
+    // We send our own Polish-branded copy via Resend below — to avoid a duplicate
+    // email, disable WorkOS's Magic Auth email (or configure a custom email
+    // provider) in the WorkOS Dashboard. See WORKOS_AUDIT.md F1.
+    const workos = getWorkOS(env.WORKOS_API_KEY);
+    const magicAuth = await workos.userManagement.createMagicAuth({ email });
 
     // Send verification code email in Polish via Resend
     await sendVerificationEmail(env.RESEND_API_KEY, email, magicAuth.code);
@@ -171,7 +167,7 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
     .find(c => c.trim().startsWith('magic_auth_csrf='))
     ?.split('=')[1];
 
-  if (!csrfToken || !cookieCsrf || csrfToken !== cookieCsrf) {
+  if (!csrfToken || !cookieCsrf || !timingSafeEqual(csrfToken, cookieCsrf)) {
     const newCsrf = crypto.randomUUID();
     return new Response(renderLoginCodeForm(
       email,
@@ -226,9 +222,9 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
 
   try {
     // Authenticate with WorkOS using Magic Auth code
-    const workos = new WorkOS(env.WORKOS_API_KEY);
+    const workos = getWorkOS(env.WORKOS_API_KEY);
 
-    const { user: workosUser, accessToken, refreshToken } = await workos.userManagement.authenticateWithMagicAuth({
+    const { user: workosUser, accessToken } = await workos.userManagement.authenticateWithMagicAuth({
       clientId: env.WORKOS_CLIENT_ID,
       code,
       email,
@@ -271,13 +267,12 @@ export async function handleVerifyMagicAuthCode(request: Request, env: Env): Pro
     // Create session token
     const sessionToken = crypto.randomUUID();
 
-    // Store session in KV
+    // Store session in KV (no refresh_token — never used; see WORKOS_AUDIT.md F2)
     const session = {
       user_id: dbUser.user_id,
       email: dbUser.email,
       workos_user_id: workosUser.id,
       access_token: accessToken,
-      refresh_token: refreshToken,
       created_at: Date.now(),
       expires_at: Date.now() + (72 * 60 * 60 * 1000), // 72 hours
     };

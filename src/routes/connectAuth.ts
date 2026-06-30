@@ -9,7 +9,6 @@ interface KVSession {
   email: string;
   workos_user_id: string;
   access_token: string;
-  refresh_token: string;
   created_at: number;
   expires_at: number;
 }
@@ -43,6 +42,17 @@ export async function handleConnectLogin(request: Request, env: Env): Promise<Re
   }
 
   if (!sessionData.workos_user_id) {
+    return redirectToLogin(url, externalAuthId);
+  }
+
+  // Soft-deleted accounts must not complete an OAuth flow even with a live session
+  // cookie. This path reads KV directly (bypassing validateSession), so it filters
+  // is_deleted itself — consistent with getUserById / authenticateBearer (F3).
+  const activeUser = await env.TOKEN_DB.prepare(
+    'SELECT user_id FROM users WHERE user_id = ? AND is_deleted = 0',
+  ).bind(sessionData.user_id).first();
+
+  if (!activeUser) {
     return redirectToLogin(url, externalAuthId);
   }
 

@@ -22,6 +22,7 @@ import {
 import { handleConnectLogin } from './routes/connectAuth';
 import {
   handleSettingsPage,
+  handleAccountDeletion,
 } from './routes/accountSettings';
 
 export interface Env {
@@ -300,6 +301,11 @@ export default {
     // Settings page
     if (url.pathname === '/dashboard/settings' && request.method === 'GET') {
       return await handleSettingsPage(authenticatedUser);
+    }
+
+    // Account deletion (GDPR soft delete + audit + session cleanup)
+    if (url.pathname === '/account/delete/confirm' && request.method === 'POST') {
+      return await handleAccountDeletion(request, env, authenticatedUser);
     }
 
     // Logout endpoint

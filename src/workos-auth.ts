@@ -1,7 +1,7 @@
 // src/workos-auth.ts - WorkOS Authentication Module for Cloudflare Workers
 
-import { WorkOS } from '@workos-inc/node';
 import { decodeJwt } from 'jose';
+import { getWorkOS } from './utils/workosClient';
 import type { User } from './types';
 
 /**
@@ -21,8 +21,9 @@ interface WorkOSSession {
   user_id: string;
   email: string;
   workos_user_id: string;
+  // access_token retained: getLogoutUrl decodes its `sid` claim at sign-out.
+  // refresh_token intentionally NOT stored — it was never used (see WORKOS_AUDIT.md F2).
   access_token: string;
-  refresh_token: string;
   created_at: number;
   expires_at: number;
 }
@@ -49,7 +50,7 @@ export async function getAuthorizationUrl(
   redirectUri: string,
   state?: string
 ): Promise<string> {
-  const workos = new WorkOS(env.WORKOS_API_KEY);
+  const workos = getWorkOS(env.WORKOS_API_KEY);
 
   const authorizationUrl = workos.userManagement.getAuthorizationUrl({
     provider: 'authkit',
@@ -58,10 +59,12 @@ export async function getAuthorizationUrl(
     state,
   });
 
-  // Append Polish locale (not supported in SDK interface, safe to add as query param)
-  const localizedUrl = `${authorizationUrl}&locale=pl`;
+  // AuthKit UI locale — not part of getAuthorizationUrl options in SDK v8, so set
+  // it on the returned URL (robust regardless of existing query params).
+  const url = new URL(authorizationUrl);
+  url.searchParams.set('locale', 'pl');
 
-  return localizedUrl;
+  return url.toString();
 }
 
 /**
@@ -77,26 +80,29 @@ export async function handleCallback(
   code: string,
   env: WorkOSAuthEnv
 ): Promise<{ user: User; sessionToken: string }> {
-  const workos = new WorkOS(env.WORKOS_API_KEY);
+  const workos = getWorkOS(env.WORKOS_API_KEY);
 
   // Exchange authorization code for authenticated user
-  const { user: workosUser, accessToken, refreshToken } = await workos.userManagement.authenticateWithCode({
+  const { user: workosUser, accessToken } = await workos.userManagement.authenticateWithCode({
     clientId: env.WORKOS_CLIENT_ID,
     code,
   });
 
-  // Set Polish locale on WorkOS user profile
-  try {
-    await workos.userManagement.updateUser({
-      userId: workosUser.id,
-      locale: 'pl',
-    });
-  } catch (localeError) {
-    console.warn('[workos] Failed to set locale:', localeError);
-  }
-
   // Get or create user in our database
-  const { user } = await getOrCreateUser(workosUser.email, workosUser.id, env);
+  const { user, isNewUser } = await getOrCreateUser(workosUser.email, workosUser.id, env);
+
+  // Set Polish locale on the WorkOS profile only for brand-new users — avoids an
+  // extra updateUser API call on every login (locale never changes after signup).
+  if (isNewUser) {
+    try {
+      await workos.userManagement.updateUser({
+        userId: workosUser.id,
+        locale: 'pl',
+      });
+    } catch (localeError) {
+      console.warn('[workos] Failed to set locale:', localeError);
+    }
+  }
 
   // Create session token
   const sessionToken = crypto.randomUUID();
@@ -107,7 +113,6 @@ export async function handleCallback(
     email: user.email,
     workos_user_id: workosUser.id,
     access_token: accessToken,
-    refresh_token: refreshToken,
     created_at: Date.now(),
     expires_at: Date.now() + (72 * 60 * 60 * 1000), // 72 hours
   };
@@ -205,7 +210,7 @@ export async function getLogoutUrl(
   sessionToken: string,
   env: WorkOSAuthEnv
 ): Promise<string> {
-  const workos = new WorkOS(env.WORKOS_API_KEY);
+  const workos = getWorkOS(env.WORKOS_API_KEY);
 
   // Retrieve session from KV to get access token
   const sessionData = await env.USER_SESSIONS.get(`workos_session:${sessionToken}`, 'json');
@@ -247,10 +252,12 @@ export function getSessionTokenFromRequest(request: Request): string | null {
     return null;
   }
 
-  // Parse cookies
+  // Parse cookies. Split on the FIRST '=' only so values containing '=' survive.
   const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-    const [key, value] = cookie.trim().split('=');
-    acc[key] = value;
+    const trimmed = cookie.trim();
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) return acc;
+    acc[trimmed.slice(0, eq)] = trimmed.slice(eq + 1);
     return acc;
   }, {} as Record<string, string>);
 
@@ -259,6 +266,12 @@ export function getSessionTokenFromRequest(request: Request): string | null {
 
 /**
  * Helper: Get user by user_id from database
+ *
+ * Filters is_deleted = 0 so a soft-deleted account with a still-valid session
+ * cookie loses panel access immediately — consistent with authenticateBearer
+ * (the canonical JWT path). NOT applied to the getOrCreateUser lookups below:
+ * those must still find soft-deleted rows on re-auth, otherwise INSERT would
+ * collide with the UNIQUE email/workos_user_id constraint.
  */
 async function getUserById(userId: string, db: D1Database): Promise<User | null> {
   const result = await db.prepare(`
@@ -268,7 +281,7 @@ async function getUserById(userId: string, db: D1Database): Promise<User | null>
       created_at,
       last_login_at
     FROM users
-    WHERE user_id = ?
+    WHERE user_id = ? AND is_deleted = 0
   `).bind(userId).first();
 
   return result as User | null;
